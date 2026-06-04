@@ -659,6 +659,28 @@
             <a href="{% url 'fetch_news' %}" class="fetch-btn">Refresh</a>
         </div>
         
+        <!-- SIDEBAR CONTROLS (SEARCH & FILTERS) -->
+        <div class="sidebar-controls" style="padding: 12px 15px; border-bottom: 1px solid var(--border-color); background: #f8f9fa; display: flex; flex-direction: column; gap: 8px;">
+            <div style="position: relative; display: flex; align-items: center;">
+                <input type="text" id="sidebar-search" placeholder="Search news by headline, source..." style="width: 100%; padding: 7px 30px 7px 12px; font-size: 0.82rem; border: 1px solid var(--border-color); border-radius: 6px; outline: none; box-sizing: border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--brand-color)'" onblur="this.style.borderColor='var(--border-color)'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 10px; width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; opacity: 0.7;">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <select id="filter-sector" style="flex: 1.2; padding: 5px 8px; font-size: 0.78rem; border: 1px solid var(--border-color); border-radius: 6px; background: white; outline: none; color: #4b5563; max-width: 60%; cursor: pointer;">
+                    <option value="">All Sectors</option>
+                </select>
+                <select id="filter-direction" style="flex: 0.8; padding: 5px 8px; font-size: 0.78rem; border: 1px solid var(--border-color); border-radius: 6px; background: white; outline: none; color: #4b5563; max-width: 40%; cursor: pointer;">
+                    <option value="">Sentiment</option>
+                    <option value="positive">Positive</option>
+                    <option value="negative">Negative</option>
+                    <option value="neutral">Neutral</option>
+                </select>
+            </div>
+        </div>
+        
         {% if messages %}
         <div style="padding: 10px; background: #e0f2fe; color: #0284c7; font-size: 0.85rem; border-bottom: 1px solid #bae6fd;">
             {% for message in messages %}
@@ -1003,6 +1025,55 @@
             document.querySelectorAll('.saved-article-item').forEach(c => c.style.background = 'white');
         }
 
+        function populateFilterOptions() {
+            const sectorSelect = document.getElementById('filter-sector');
+            if (!sectorSelect) return;
+            
+            const sectors = new Set();
+            document.querySelectorAll('.article-card').forEach(card => {
+                const sector = card.getAttribute('data-sector');
+                if (sector && sector.trim() !== '') {
+                    sectors.add(sector);
+                }
+            });
+            
+            const sortedSectors = Array.from(sectors).sort();
+            sortedSectors.forEach(sec => {
+                const opt = document.createElement('option');
+                opt.value = sec;
+                opt.textContent = sec.replace(/_/g, ' ');
+                sectorSelect.appendChild(opt);
+            });
+        }
+
+        function filterSidebarArticles() {
+            const searchQuery = document.getElementById('sidebar-search').value.toLowerCase().trim();
+            const selectedSector = document.getElementById('filter-sector').value;
+            const selectedDirection = document.getElementById('filter-direction').value;
+            
+            document.querySelectorAll('.article-card').forEach(card => {
+                const title = card.getAttribute('data-title').toLowerCase();
+                const source = card.getAttribute('data-source').toLowerCase();
+                const keywords = card.getAttribute('data-keywords').toLowerCase();
+                const sector = card.getAttribute('data-sector');
+                const direction = card.getAttribute('data-direction');
+                
+                const matchesSearch = !searchQuery || 
+                                      title.includes(searchQuery) || 
+                                      source.includes(searchQuery) || 
+                                      keywords.includes(searchQuery);
+                                      
+                const matchesSector = !selectedSector || sector === selectedSector;
+                const matchesDirection = !selectedDirection || (direction && direction.toLowerCase() === selectedDirection);
+                
+                if (matchesSearch && matchesSector && matchesDirection) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
         // Auto-select article on page load if query param 'select' is present
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -1047,6 +1118,18 @@
                     savedTabBtn.click();
                 }
             }
+
+            // Populate sectors filter option dynamically
+            populateFilterOptions();
+            
+            // Setup Search and Filter Event Listeners
+            const searchInput = document.getElementById('sidebar-search');
+            const sectorFilter = document.getElementById('filter-sector');
+            const directionFilter = document.getElementById('filter-direction');
+            
+            if (searchInput) searchInput.addEventListener('input', filterSidebarArticles);
+            if (sectorFilter) sectorFilter.addEventListener('change', filterSidebarArticles);
+            if (directionFilter) directionFilter.addEventListener('change', filterSidebarArticles);
         });
     </script>
 
