@@ -1162,16 +1162,33 @@ class Command(BaseCommand):
             
             if pre_filtered_articles:
                 total_to_check = len(pre_filtered_articles)
-                self.stdout.write(f"Running LLM checks for {total_to_check} articles sequentially...")
+                self.stdout.write(f"Running LLM checks for {total_to_check} articles in parallel...")
                 
-                for idx, art in enumerate(pre_filtered_articles, 1):
-                    self.stdout.write(f"  [{idx}/{total_to_check}] Checking relevance of: \"{art['title']}\"...")
-                    entry_log = art["entry_log"]
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                
+                def check_article_relevance(art_index, article):
+                    title = article["title"]
+                    description = article["description"]
                     try:
-                        relevance = is_relevant_to_india_economy(art["title"], art["description"], OLLAMA_MODEL)
+                        relevance = is_relevant_to_india_economy(title, description, OLLAMA_MODEL)
                     except Exception as e:
-                        relevance = {"relevant": False, "reason": f"LLM error: {e}", "matched_keywords": []}
-                        
+                        relevance = {"relevant": False, "reason": f"LLM error: {str(e)}", "matched_keywords": []}
+                    return art_index, article, relevance
+
+                # Run checking concurrently using a ThreadPoolExecutor
+                max_workers = 4
+                results = {}
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = {executor.submit(check_article_relevance, i, art): i for i, art in enumerate(pre_filtered_articles, 1)}
+                    for future in as_completed(futures):
+                        idx, art, relevance = future.result()
+                        self.stdout.write(f"  [{idx}/{total_to_check}] Finished checking relevance of: \"{art['title']}\"")
+                        results[idx] = (art, relevance)
+                
+                # Process results in the original order to preserve sequence in logs and DB
+                for idx in sorted(results.keys()):
+                    art, relevance = results[idx]
+                    entry_log = art["entry_log"]
                     entry_log["analysis"]["relevance"] = relevance
                     entry_log["insights"]["relevance"] = relevance
                     entry_log["insights_text"] = relevance.get('reason', '')
