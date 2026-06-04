@@ -11,8 +11,16 @@ from django.utils.timezone import make_aware
 
 from newsfeeds.models import NewsArticle
 from keywords2 import tema_keywords, sector_keywords   # Make sure this file is accessible
-from .channel_maps import ChannelMapper, CHANNEL_MAP
-from .ollama_ch_maps import OllamaChannelMapper
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
+try:
+    from .channel_maps import ChannelMapper, CHANNEL_MAP
+    from .ollama_ch_maps import OllamaChannelMapper
+except (ImportError, ValueError):
+    from channel_maps import ChannelMapper, CHANNEL_MAP
+    from ollama_ch_maps import OllamaChannelMapper
 
 channel_mapper = ChannelMapper()
 ollama_channel_mapper = OllamaChannelMapper()
@@ -1148,47 +1156,15 @@ class Command(BaseCommand):
             
             self.stdout.write(f"Keyword pre-filter complete. {len(pre_filtered_articles)} passed out of {len(word_selected_articles)}.\n")
 
-            # Step 3: Semantic Deduplication via Ollama (On keyword-passed articles only)
-            self.stdout.write(f"--- Running semantic duplicate cleaning on keyword-passed articles ---")
-            semantic_unique_articles = []
-            for art in pre_filtered_articles:
-                entry_log = art["entry_log"]
-                self.stdout.write(f"  Checking semantic duplicate of: \"{art['title']}\"...")
-                try:
-                    dup_result = is_semantic_duplicate_ollama(art["title"], art["description"], semantic_unique_articles, OLLAMA_MODEL)
-                except Exception as e:
-                    dup_result = {"repeated": False, "reason": f"Ollama error: {e}"}
-                
-                if dup_result.get("repeated", False):
-                    self.stdout.write(f"  -> REJECTED as semantic duplicate: {dup_result.get('reason', '')}")
-                    entry_log["status"] = "skipped_semantic_duplicate"
-                    entry_log["skip_reason"] = f"Semantic duplicate check: {dup_result.get('reason', '')}"
-                    entry_log["steps"].append({
-                        "step": "Semantic Deduplication",
-                        "status": "REJECTED",
-                        "detail": dup_result.get("reason", "")
-                    })
-                    rejected_articles.append(entry_log)
-                    all_articles_log.append(entry_log)
-                else:
-                    entry_log["steps"].append({
-                        "step": "Semantic Deduplication",
-                        "status": "PASSED",
-                        "detail": f"Unique content confirmed by Ollama. Reason: {dup_result.get('reason', '')}"
-                    })
-                    semantic_unique_articles.append(art)
+            # Step 3: High-Fidelity Relevance Check via local Ollama (On keyword-passed articles)
+            self.stdout.write(f"\n--- Filter if content is relevant (Relevance Check) ---")
+            relevant_articles = []
             
-            self.stdout.write(f"Semantic cleaning complete. {len(semantic_unique_articles)} unique articles remaining.\n")
-
-            # Step 4: High-Fidelity Relevance Check via local Ollama (On unique keyword-passed articles only)
-            self.stdout.write(f"--- Filter if unique content is relevant (Relevance Check) ---")
-            semantic_selected_articles = []
-            
-            if semantic_unique_articles:
-                total_to_check = len(semantic_unique_articles)
-                self.stdout.write(f"Running LLM checks for {total_to_check} unique articles sequentially...")
+            if pre_filtered_articles:
+                total_to_check = len(pre_filtered_articles)
+                self.stdout.write(f"Running LLM checks for {total_to_check} articles sequentially...")
                 
-                for idx, art in enumerate(semantic_unique_articles, 1):
+                for idx, art in enumerate(pre_filtered_articles, 1):
                     self.stdout.write(f"  [{idx}/{total_to_check}] Checking relevance of: \"{art['title']}\"...")
                     entry_log = art["entry_log"]
                     try:
@@ -1216,9 +1192,41 @@ class Command(BaseCommand):
                             "status": "PASSED",
                             "detail": f"Reason: {relevance.get('reason', '')}"
                         })
-                        semantic_selected_articles.append(art)
+                        relevant_articles.append(art)
 
-            self.stdout.write(f"Relevance filtering complete. {len(semantic_selected_articles)} passed.\n")
+            self.stdout.write(f"Relevance filtering complete. {len(relevant_articles)} passed out of {len(pre_filtered_articles)}.\n")
+
+            # Step 4: Semantic Deduplication via Ollama (On relevant articles only)
+            self.stdout.write(f"\n--- Running semantic duplicate cleaning on relevant articles ---")
+            semantic_selected_articles = []
+            for idx, art in enumerate(relevant_articles, 1):
+                entry_log = art["entry_log"]
+                self.stdout.write(f"  [{idx}/{len(relevant_articles)}] Checking semantic duplicate of: \"{art['title']}\"...")
+                try:
+                    dup_result = is_semantic_duplicate_ollama(art["title"], art["description"], semantic_selected_articles, OLLAMA_MODEL)
+                except Exception as e:
+                    dup_result = {"repeated": False, "reason": f"Ollama error: {e}"}
+                
+                if dup_result.get("repeated", False):
+                    self.stdout.write(f"  -> REJECTED as semantic duplicate: {dup_result.get('reason', '')}")
+                    entry_log["status"] = "skipped_semantic_duplicate"
+                    entry_log["skip_reason"] = f"Semantic duplicate check: {dup_result.get('reason', '')}"
+                    entry_log["steps"].append({
+                        "step": "Semantic Deduplication",
+                        "status": "REJECTED",
+                        "detail": dup_result.get("reason", "")
+                    })
+                    rejected_articles.append(entry_log)
+                    all_articles_log.append(entry_log)
+                else:
+                    entry_log["steps"].append({
+                        "step": "Semantic Deduplication",
+                        "status": "PASSED",
+                        "detail": f"Unique content confirmed by Ollama. Reason: {dup_result.get('reason', '')}"
+                    })
+                    semantic_selected_articles.append(art)
+            
+            self.stdout.write(f"Semantic cleaning complete. {len(semantic_selected_articles)} unique relevant articles remaining.\n")
 
             # Step 4: Process All Selected News Items (Strictly based on raw RSS feed)
             self.stdout.write(f"\n==================================================")

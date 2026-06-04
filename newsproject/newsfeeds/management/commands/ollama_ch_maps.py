@@ -4,7 +4,14 @@ import json
 import logging
 import re
 import ollama
-from .channel_maps import ChannelMapper, CHANNELS, ChannelMappingResult, PROPAGATION_LAG
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
+try:
+    from .channel_maps import ChannelMapper, CHANNELS, ChannelMappingResult, PROPAGATION_LAG
+except (ImportError, ValueError):
+    from channel_maps import ChannelMapper, CHANNELS, ChannelMappingResult, PROPAGATION_LAG
 
 logger = logging.getLogger(__name__)
 
