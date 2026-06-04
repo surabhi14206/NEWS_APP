@@ -1,0 +1,11 @@
+Article Text for spaCy:
+Title: Coinbase offers trading using Indian rupee - Reuters
+Description: <a href=" target="_blank">Coinbase offers trading using Indian rupee</a>&nbsp;&nbsp;<font color="#6f6f6f">Reuters</font>
+
+
+spaCy Entities:
+- Indian (NORP)
+- Indian (NORP)
+
+Filtered spacy_cities:
+[]

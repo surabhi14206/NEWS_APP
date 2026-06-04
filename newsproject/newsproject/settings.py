@@ -37,7 +37,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'newsfeeds',
 ]
+
+# Ollama & other settings
+OLLAMA_MODEL = "gemma3:4b"
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

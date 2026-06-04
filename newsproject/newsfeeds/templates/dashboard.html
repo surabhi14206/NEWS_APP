@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Indian Economy News Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #f4f5f8;
+            --bg-sidebar: #ffffff;
+            --bg-card: #ffffff;
+            --bg-label: #e6e9ee;
+            --bg-value: #f9fbfd;
+            --text-main: #1d1d1f;
+            --text-muted: #6e6e73;
+            --border-color: #d2d6df;
+            --brand-color: #0066cc;
+            --section-title-bg: #dce4f0;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            background: var(--bg-body); 
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout */
+        .sidebar {
+            width: 350px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px 40px;
+            overflow-y: auto;
+            background: var(--bg-body);
+        }
+
+        /* Sidebar Header */
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .fetch-btn {
+            background: var(--brand-color);
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        .fetch-btn:hover {
+            background: #005bb5;
+        }
+
+        /* Article List */
+        .article-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .article-card {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #fff;
+        }
+
+        .article-card:hover {
+            background: #f8f9fa;
+            border-color: var(--border-color);
+        }
+
+        .article-card.active {
+            background: #eef5ff;
+            border-color: #b8d4fe;
+        }
+
+        .card-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-keywords {
+            font-size: 0.75rem;
+            color: #0066cc;
+            background: #eef5ff;
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+
+        /* Dashboard Template */
+        .template-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            display: none; /* Hidden until an article is clicked */
+        }
+
+        .template-title {
+            padding: 20px 25px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            color: #111827;
+        }
+
+        .section-header {
+            background: var(--section-title-bg);
+            padding: 10px 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid var(--border-color);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .section-header:first-of-type {
+            border-top: none;
+        }
+
+        .grid-form {
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .form-group {
+            display: flex;
+            flex: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .form-group.full {
+            flex: 100%;
+        }
+
+        .label {
+            background: var(--bg-label);
+            padding: 10px 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4b5563;
+            width: 120px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .value {
+            background: var(--bg-value);
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            color: #1f2937;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            line-height: 1.5;
+        }
+
+        .value a {
+            color: var(--brand-color);
+            text-decoration: none;
+        }
+
+        .value a:hover {
+            text-decoration: underline;
+        }
+
+        .value p {
+            margin: 0;
+            padding: 0;
+        }
+        
+        .value p + p {
+            margin-top: 8px;
+        }
+
+        /* Specific field adjustments */
+        .label.tall {
+            align-items: flex-start;
+        }
+        
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.2;
+        }
+        .badge-positive {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+        .badge-negative {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+        .badge-neutral {
+            background-color: #f3f4f6;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+        /* Info Icon and Tooltip */
+        .info-icon-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .info-icon {
+            opacity: 0.6;
+            color: #6e6e73;
+            transition: opacity 0.2s, color 0.2s;
+        }
+        
+        .info-icon-container:hover .info-icon {
+            opacity: 1;
+            color: #0066cc;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 280px;
+            background-color: #1f2937;
+            color: #ffffff;
+            text-align: left;
+            border-radius: 8px;
+            padding: 12px 14px;
+            position: absolute;
+            z-index: 100;
+            top: 50%;
+            right: calc(100% + 15px);
+            opacity: 0;
+            transition: opacity 0.25s, transform 0.25s;
+            transform: translateY(-50%) translateX(10px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            font-size: 0.8rem;
+            line-height: 1.45;
+            font-weight: 400;
+            border: 1px solid #374151;
+            pointer-events: none;
+        }
+
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            margin-top: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: transparent transparent transparent #1f2937;
+        }
+
+        .info-icon-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        /* Manual Analysis FAB Button and Drawer */
+        .manual-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--brand-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            z-index: 999;
+            border: none;
+            outline: none;
+        }
+
+        .manual-fab:hover {
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 102, 204, 0.4);
+            background: #005bb5;
+        }
+
+        .manual-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .manual-modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: #ffffff;
+            width: 500px;
+            max-width: 90%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: -520px;
+            box-shadow: 20px 0 40px rgba(0,0,0,0.15);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: left 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .manual-modal.show .modal-content {
+            left: 0;
+        }
+
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--text-main);
+        }
+
+        .modal-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background: #f8f9fa;
+        }
+
+        .modal-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .modal-tab.active {
+            color: var(--brand-color);
+            border-bottom-color: var(--brand-color);
+            background: #ffffff;
+            font-weight: 600;
+        }
+
+        .modal-body {
+            padding: 25px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4b5563;
+        }
+
+        .form-textarea {
+            width: 100%;
+            height: 180px;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .form-textarea:focus {
+            border-color: var(--brand-color);
+        }
+
+        .file-dropzone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fdfdfd;
+        }
+
+        .file-dropzone:hover, .file-dropzone.dragover {
+            border-color: var(--brand-color);
+            background: #eef5ff;
+        }
+
+        .file-dropzone svg {
+            width: 48px;
+            height: 48px;
+            color: var(--brand-color);
+            margin-bottom: 12px;
+            opacity: 0.8;
+            stroke-width: 1.5;
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 15px;
+            padding: 10px 15px;
+            background: #f3f4f6;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .remove-file {
+            color: #ef4444;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .modal-footer {
+            padding: 15px 25px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: #f8f9fa;
+        }
+
+        .btn-secondary {
+            background: white;
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: #f3f4f6;
+        }
+
+        .btn-primary {
+            background: var(--brand-color);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: #005bb5;
+        }
+
+        .saved-article-item {
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        .saved-article-item:hover {
+            background: #f8f9fa;
+            border-color: var(--brand-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        .btn-primary:disabled {
+            background: #a5cbf7;
+            cursor: not-allowed;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .format-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .format-hint code {
+            background: #f3f4f6;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .error-banner {
+            display: none;
+            padding: 12px 15px;
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>🇮🇳 News Feed</h1>
+            <a href="{% url 'fetch_news' %}" class="fetch-btn">Refresh</a>
+        </div>
+        
+        {% if messages %}
+        <div style="padding: 10px; background: #e0f2fe; color: #0284c7; font-size: 0.85rem; border-bottom: 1px solid #bae6fd;">
+            {% for message in messages %}
+                <div{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="article-list">
+            {% for article in articles %}
+            <div class="article-card" 
+                 onclick="showArticleDetails(this)"
+                 data-id="EVT-{{ article.id|default:'000' }}"
+                 data-date="{{ article.published_date|date:'d M Y' }}"
+                 data-source="{{ article.source }}"
+                 data-title="{{ article.title }}"
+                 data-summary="{{ article.summary }}"
+                 data-link="{{ article.link }}"
+                 data-keywords="{{ article.matched_keywords|join:', ' }}"
+                 data-direction="{{ article.direction }}"
+                 data-direction-reason="{{ article.direction_reason }}"
+                 data-impact-score="{{ article.impact_score }}"
+                 data-event-class="{{ article.event_class }}"
+                 data-sector="{{ article.sector }}"
+                 data-sub-type="{{ article.sub_type }}"
+                 data-channel="{{ article.channel }}"
+                 data-origin="{{ article.origin|default:'Global' }}">
+                
+                <div class="card-meta">{{ article.source }} • {{ article.published_date|date:"d M y" }}</div>
+                <h3 class="card-title">{{ article.title }}</h3>
+                {% if article.matched_keywords %}
+                <span class="card-keywords">{{ article.matched_keywords.0 }}</span>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div style="padding: 20px; text-align: center; color: #6e6e73; font-size: 0.9rem;">
+                No articles found. Click Refresh to fetch.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- RIGHT MAIN CONTENT -->
+    <div class="main-content">
+        
+        <!-- Empty State (Shows initially) -->
+        <div id="empty-state" class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            <h2>Select an article</h2>
+            <p>Click on any news article from the left sidebar to view its Event Record Template.</p>
+        </div>
+
+        <!-- Dashboard Template (Shows when article clicked) -->
+        <div id="template-view" class="template-wrapper">
+            
+            <div class="template-title" id="display-title">[Headline]</div>
+            
+            <div class="grid-form">
+                <!-- Row 1 -->
+                <div class="form-row">
+
+                    <div class="form-group">
+                        <div class="label">Date</div>
+                        <div class="value" id="val-date">-</div>
+                    </div>
+                    <div class="form-group">
+                        <div class="label">Source</div>
+                        <div class="value" id="val-source">-</div>
+                    </div>
+                </div>
+
+                <!-- Row 2 -->
+                <div class="form-row">
+                    <div class="form-group full">
+                        <div class="label">Headline</div>
+                        <div class="value"><a href="#" id="val-headline" target="_blank">-</a></div>
+                    </div>
+                </div>
+
+                <!-- Row 3 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="label">Event class</div>
+                        <div class="value" id="val-event-class">Economic Impact</div>
+                    </div>
+                    <div class="form-group">
+                        <div class="label">Sub-type</div>
+                        <div class="value" id="val-sub-type">General News</div>
+                    </div>
+                </div>
+
+                <!-- Row 4 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="label">City/Country</div>
+                        <div class="value" id="val-origin">India / Global</div>
+                    </div>
+                    <div class="form-group" style="overflow: visible;">
+                        <div class="label">Direction</div>
+                        <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; border-top-right-radius: 5px; border-bottom-right-radius: 5px; overflow: visible;">
+                            <div id="val-direction-badge">
+                                <span class="badge-neutral">Pending</span>
+                            </div>
+                            
+                            <!-- Hover Info Icon for Sentiment Reason -->
+                            <div class="info-icon-container" id="val-direction-info" style="display: none;">
+                                <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <div class="tooltip-text" id="val-direction-tooltip">No details available.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 5 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="label">Sector</div>
+                        <div class="value" id="val-sector">Macroeconomy</div>
+                    </div>
+                    <div class="form-group">
+                        <div class="label">Channel</div>
+                        <div class="value" id="val-channel">News & Media</div>
+                    </div>
+                </div>
+
+                <!-- Row 6 -->
+                <div class="form-row">
+                    <div class="form-group full">
+                        <div class="label tall">Insight</div>
+                        <div class="value" id="val-context">-</div>
+                    </div>
+                </div>
+            </div>
+
+
+
+        </div>
+    </div>
+
+    <script>
+        function showArticleDetails(card) {
+            // Remove active class from all cards
+            document.querySelectorAll('.article-card').forEach(c => c.classList.remove('active'));
+            // Add active class to clicked card
+            card.classList.add('active');
+
+            // Hide empty state, show template
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('template-view').style.display = 'block';
+
+            // Get data from data attributes
+            const id = card.getAttribute('data-id');
+            const date = card.getAttribute('data-date');
+            const source = card.getAttribute('data-source');
+            const title = card.getAttribute('data-title');
+            const summary = card.getAttribute('data-summary');
+            const link = card.getAttribute('data-link');
+            const keywords = card.getAttribute('data-keywords');
+            const direction = card.getAttribute('data-direction');
+            const directionReason = card.getAttribute('data-direction-reason');
+            const impactScore = card.getAttribute('data-impact-score');
+            const eventClass = card.getAttribute('data-event-class');
+            const sector = card.getAttribute('data-sector');
+            const subType = card.getAttribute('data-sub-type');
+            const channel = card.getAttribute('data-channel');
+            const origin = card.getAttribute('data-origin');
+
+            // Update UI elements
+            document.getElementById('display-title').textContent = title;
+            document.getElementById('val-origin').textContent = origin || "Global";
+            document.getElementById('val-date').textContent = date;
+            document.getElementById('val-source').textContent = source;
+            document.getElementById('val-event-class').textContent = eventClass ? eventClass.replace(/^L1[_\s\-]+/i, '').replace(/_/g, ' ') : "Economic Impact";
+            document.getElementById('val-sub-type').textContent = subType ? subType.replace(/^L2[_\s\-]+/i, '').replace(/_/g, ' ') : "General News";
+            document.getElementById('val-channel').textContent = channel || "News & Media";
+            
+            const headlineEl = document.getElementById('val-headline');
+            headlineEl.textContent = title;
+            headlineEl.href = link;
+
+            document.getElementById('val-context').innerHTML = summary ? marked.parse(summary) : "No context available.";
+
+            // Map Direction Badge & Reason
+            let badgeClass = 'badge-neutral';
+            let formattedDir = 'Neutral';
+            let scoreStr = '';
+
+            if (direction) {
+                const dirLower = direction.toLowerCase();
+                if (dirLower === 'positive') {
+                    badgeClass = 'badge-positive';
+                    formattedDir = 'Positive';
+                } else if (dirLower === 'negative') {
+                    badgeClass = 'badge-negative';
+                    formattedDir = 'Negative';
+                } else if (dirLower === 'neutral') {
+                    badgeClass = 'badge-neutral';
+                    formattedDir = 'Neutral';
+                } else if (dirLower === 'pending') {
+                    badgeClass = 'badge-neutral';
+                    formattedDir = 'Pending';
+                }
+            }
+
+            if (impactScore && impactScore !== 'None' && impactScore !== '') {
+                const scoreNum = parseInt(impactScore);
+                scoreStr = scoreNum > 0 ? ` (+${scoreNum})` : ` (${scoreNum})`;
+            } else {
+                scoreStr = ' (0)';
+            }
+
+            // Update direction badge
+            const badgeEl = document.getElementById('val-direction-badge');
+            if (badgeEl) {
+                badgeEl.innerHTML = `<span class="${badgeClass}">${formattedDir}</span>`;
+            }
+
+            // Update tooltip reasoning and visibility
+            const infoEl = document.getElementById('val-direction-info');
+            const tooltipEl = document.getElementById('val-direction-tooltip');
+            if (infoEl && tooltipEl) {
+                if (directionReason && directionReason !== 'None' && directionReason.trim() !== '') {
+                    tooltipEl.textContent = directionReason;
+                    infoEl.style.display = 'block';
+                } else {
+                    infoEl.style.display = 'none';
+                }
+            }
+            
+            // Set Sector directly from database field
+            const sectorEl = document.getElementById('val-sector');
+            sectorEl.textContent = sector ? sector.replace(/_/g, ' ') : "General / Macro";
+        }
+
+        let selectedSavedArticleId = null;
+
+        function showSavedArticleDetail(card) {
+            // Remove active class/highlight from all saved items
+            document.querySelectorAll('.saved-article-item').forEach(c => c.style.background = 'white');
+            // Highlight selected item
+            card.style.background = '#eef5ff';
+
+            const panel = document.getElementById('manual-saved-detail-panel');
+            if (panel) panel.style.display = 'flex';
+
+            // Get data from data attributes
+            const id = card.getAttribute('data-id');
+            selectedSavedArticleId = id ? id.replace('EVT-', '') : null;
+            const date = card.getAttribute('data-date');
+            const source = card.getAttribute('data-source');
+            const title = card.getAttribute('data-title');
+            const summary = card.getAttribute('data-summary');
+            const link = card.getAttribute('data-link');
+            const direction = card.getAttribute('data-direction');
+            const directionReason = card.getAttribute('data-direction-reason');
+            const impactScore = card.getAttribute('data-impact-score');
+            const eventClass = card.getAttribute('data-event-class');
+            const sector = card.getAttribute('data-sector');
+            const subType = card.getAttribute('data-sub-type');
+            const channel = card.getAttribute('data-channel');
+            const origin = card.getAttribute('data-origin');
+
+            // Update UI elements
+            document.getElementById('saved-display-title').textContent = title;
+            document.getElementById('saved-val-origin').textContent = origin || "Global";
+            document.getElementById('saved-val-date').textContent = date;
+            document.getElementById('saved-val-source').textContent = source;
+            document.getElementById('saved-val-event-class').textContent = eventClass ? eventClass.replace(/^L1[_\s\-]+/i, '').replace(/_/g, ' ') : "Economic Impact";
+            document.getElementById('saved-val-sub-type').textContent = subType ? subType.replace(/^L2[_\s\-]+/i, '').replace(/_/g, ' ') : "General News";
+            document.getElementById('saved-val-channel').textContent = channel || "News & Media";
+            
+            const headlineEl = document.getElementById('saved-val-headline');
+            headlineEl.textContent = title;
+            headlineEl.href = link;
+
+            document.getElementById('saved-val-context').innerHTML = summary ? marked.parse(summary) : "No context available.";
+
+            // Map Direction Badge & Reason
+            let badgeClass = 'badge-neutral';
+            let formattedDir = 'Neutral';
+            let scoreStr = '';
+
+            if (direction) {
+                const dirLower = direction.toLowerCase();
+                if (dirLower === 'positive') {
+                    badgeClass = 'badge-positive';
+                    formattedDir = 'Positive';
+                } else if (dirLower === 'negative') {
+                    badgeClass = 'badge-negative';
+                    formattedDir = 'Negative';
+                } else if (dirLower === 'neutral') {
+                    badgeClass = 'badge-neutral';
+                    formattedDir = 'Neutral';
+                } else if (dirLower === 'pending') {
+                    badgeClass = 'badge-neutral';
+                    formattedDir = 'Pending';
+                }
+            }
+
+            if (impactScore && impactScore !== 'None' && impactScore !== '') {
+                const scoreNum = parseInt(impactScore);
+                scoreStr = scoreNum > 0 ? ` (+${scoreNum})` : ` (${scoreNum})`;
+            } else {
+                scoreStr = ' (0)';
+            }
+
+            // Update direction badge
+            const badgeEl = document.getElementById('saved-val-direction-badge');
+            if (badgeEl) {
+                badgeEl.innerHTML = `<span class="${badgeClass}">${formattedDir}</span>`;
+            }
+
+            // Update tooltip reasoning and visibility
+            const infoEl = document.getElementById('saved-val-direction-info');
+            const tooltipEl = document.getElementById('saved-val-direction-tooltip');
+            if (infoEl && tooltipEl) {
+                if (directionReason && directionReason !== 'None' && directionReason.trim() !== '') {
+                    tooltipEl.textContent = directionReason;
+                    infoEl.style.display = 'block';
+                } else {
+                    infoEl.style.display = 'none';
+                }
+            }
+            
+            // Set Sector directly
+            const sectorEl = document.getElementById('saved-val-sector');
+            sectorEl.textContent = sector ? sector.replace(/_/g, ' ') : "General / Macro";
+        }
+
+        function closeSavedDetailPanel() {
+            const panel = document.getElementById('manual-saved-detail-panel');
+            if (panel) panel.style.display = 'none';
+            // Un-highlight saved items
+            document.querySelectorAll('.saved-article-item').forEach(c => c.style.background = 'white');
+        }
+
+        // Auto-select article on page load if query param 'select' is present
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const selectId = urlParams.get('select');
+            if (selectId) {
+                // Check if it's a regular relevant article
+                const card = document.querySelector(`.article-card[data-id="EVT-${selectId}"]`);
+                if (card) {
+                    showArticleDetails(card);
+                    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    // Check if it's a saved manual article
+                    const savedCard = document.querySelector(`.saved-article-item[data-id="EVT-${selectId}"]`);
+                    if (savedCard) {
+                        // Open manual analysis modal/drawer
+                        const modal = document.getElementById('manual-modal-container');
+                        if (modal) modal.classList.add('show');
+                        
+                        // Switch modal tab to View Saved
+                        const savedTabBtn = document.querySelector('[data-tab="saved-tab"]');
+                        if (savedTabBtn) {
+                            // Trigger tab switch
+                            savedTabBtn.click();
+                        }
+                        
+                        // Populate and show details panel
+                        showSavedArticleDetail(savedCard);
+                        
+                        // Scroll saved card into view
+                        savedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+            }
+        });
+    </script>
+
+    <!-- FLOATING ACTION BUTTON (FAB) IN BOTTOM RIGHT CORNER -->
+    <button class="manual-fab" id="manual-fab-btn" title="Manual News Analysis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+    </button>
+
+    <!-- MANUAL ANALYSIS MODAL -->
+    <div class="manual-modal" id="manual-modal-container">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Manual News Analysis</h2>
+                <button class="modal-close" id="modal-close-btn">&times;</button>
+            </div>
+            
+            <div class="modal-tabs">
+                <div class="modal-tab active" data-tab="paste-tab">Paste Text Content</div>
+                <div class="modal-tab" data-tab="file-tab">Upload Document</div>
+                <div class="modal-tab" data-tab="saved-tab">View Saved</div>
+            </div>
+
+            <form id="manual-analysis-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Error Banner -->
+                    <div class="error-banner" id="error-banner"></div>
+
+                    <!-- Paste Tab Pane -->
+                    <div class="tab-pane active" id="paste-tab">
+                        <label class="form-label" for="manual-paste-text">Pasted Article Content</label>
+                        <textarea class="form-textarea" id="manual-paste-text" placeholder="title: India GDP grows by 8.2%&#10;link: https://example.com/gdp&#10;description: Strong manufacturing and agriculture sectors drove robust economic expansion.&#10;source: Reuters&#10;published_date: 01 Jun 2026"></textarea>
+                        
+                        <div class="format-hint">
+                            <strong>Required format:</strong> Use field labels followed by a colon on separate lines. Supported fields: <code>title:</code>, <code>link:</code>, <code>description:</code>, <code>source:</code>, <code>published_date:</code>.
+                        </div>
+                    </div>
+
+                    <!-- File Tab Pane -->
+                    <div class="tab-pane" id="file-tab">
+                        <label class="form-label">Upload Text or Word Document</label>
+                        <div class="file-dropzone" id="file-dropzone">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p style="margin: 0; font-size: 0.95rem; font-weight: 500;">Drag and drop your file here</p>
+                            <p style="margin: 5px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Supports .txt and .docx files containing the standard template</p>
+                            <input type="file" id="manual-file-input" accept=".txt,.docx" style="display: none;">
+                        </div>
+                        <div class="file-info" id="file-info">
+                            <span id="file-name" style="font-weight: 500;">file.txt</span>
+                            <span class="remove-file" id="remove-file-btn">Remove</span>
+                        </div>
+                    </div>
+
+                    <!-- Saved Tab Pane -->
+                    <div class="tab-pane" id="saved-tab">
+                        <label class="form-label">Manually Saved Articles</label>
+                        <div class="manual-saved-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 450px; overflow-y: auto; padding: 2px;">
+                            {% for article in manual_articles %}
+                            <div class="saved-article-item" 
+                                 onclick="showSavedArticleDetail(this)"
+                                 data-id="EVT-{{ article.custom_id }}"
+                                 data-date="{{ article.published_date|date:'d M Y' }}"
+                                 data-source="{{ article.source }}"
+                                 data-title="{{ article.title }}"
+                                 data-summary="{{ article.summary }}"
+                                 data-link="{{ article.link }}"
+                                 data-keywords="{{ article.matched_keywords|join:', ' }}"
+                                 data-direction="{{ article.direction }}"
+                                 data-direction-reason="{{ article.direction_reason }}"
+                                 data-impact-score="{{ article.impact_score }}"
+                                 data-event-class="{{ article.event_class }}"
+                                 data-sector="{{ article.sector }}"
+                                 data-sub-type="{{ article.sub_type }}"
+                                 data-channel="{{ article.channel }}"
+                                 data-origin="{{ article.origin|default:'Global' }}">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; font-weight: 500;">
+                                    <span>
+                                        {{ article.source }} • {{ article.published_date|date:"d M Y" }}
+                                        {% if article.is_duplicate %}
+                                        <span style="background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 1px 5px; border-radius: 4px; font-weight: 600; margin-left: 5px; font-size: 0.65rem; text-transform: uppercase; display: inline-block; vertical-align: middle;">Duplicate</span>
+                                        {% endif %}
+                                    </span>
+                                    <button type="button" class="delete-saved-btn" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 0.8rem; padding: 2px 5px; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.7;" onmouseout="this.style.opacity=1;" onclick="deleteSavedArticle(event, '{{ article.custom_id }}', this.closest('.saved-article-item'))">Delete</button>
+                                </div>
+                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); line-height: 1.35; margin-bottom: 6px;">{{ article.title }}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ article.description }}</div>
+                            </div>
+                            {% empty %}
+                            <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem; background: #fff; border: 1px dashed var(--border-color); border-radius: 8px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px; color: var(--text-muted); margin-bottom: 8px; opacity: 0.6; display: inline-block;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <div>No manually saved articles yet.</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" id="modal-cancel-btn">Cancel</button>
+                    <button type="submit" class="btn-primary" id="modal-submit-btn">
+                        <span class="spinner" id="submit-spinner" style="display: none;"></span>
+                        <span id="submit-text">Analyze Article</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- MANUAL ANALYSIS PREVIEW PANEL -->
+            <div class="modal-preview" id="modal-preview" style="display: none; border-top: 1px solid var(--border-color); flex: 1; overflow-y: auto; padding: 25px; background: #f9fbfd;">
+                <h3 style="margin-top: 0; font-size: 1rem; font-weight: 600; color: #111827; margin-bottom: 15px;">Analysis Preview</h3>
+                
+                <!-- Container for Multiple Preview Cards -->
+                <div id="preview-cards-container" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Appended dynamically -->
+                </div>
+
+                <!-- Bottom Close Preview Action -->
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <button type="button" class="btn-secondary" id="prev-close-btn" style="padding: 8px 20px; font-size: 0.85rem;">Close Preview</button>
+                </div>
+            </div>
+            </div>
+            
+            <!-- FLOATING EVENT RECORD TEMPLATE FOR SAVED MANUAL ARTICLES -->
+            <div id="manual-saved-detail-panel" style="display: none; position: fixed; left: 500px; top: 0; right: 0; bottom: 0; z-index: 1001; align-items: center; justify-content: center; padding: 40px; box-sizing: border-box;">
+                <div class="template-wrapper" style="display: flex; flex-direction: column; width: 100%; max-width: 900px; max-height: calc(100vh - 80px); background: white; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); border: 1px solid var(--border-color); overflow: hidden; pointer-events: auto; position: relative;">
+                    <!-- Close button in top-right corner of card -->
+                    <button type="button" class="modal-close" onclick="closeSavedDetailPanel()" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); transition: color 0.2s; z-index: 10; padding: 0; line-height: 1;">&times;</button>
+                    
+                    <div class="template-title" id="saved-display-title" style="padding-right: 60px;">[Headline]</div>
+                    
+                    <div class="grid-form" style="padding: 25px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex: 1;">
+                        <!-- Row 1 -->
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Date</div>
+                                <div class="value" id="saved-val-date" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                            </div>
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Source</div>
+                                <div class="value" id="saved-val-source" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <div class="form-group full" style="display: flex; flex: 100%; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Headline</div>
+                                <div class="value" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;"><a href="#" id="saved-val-headline" target="_blank" style="color: var(--brand-color); text-decoration: none;">-</a></div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3 -->
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Event class</div>
+                                <div class="value" id="saved-val-event-class" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                            </div>
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Sub-type</div>
+                                <div class="value" id="saved-val-sub-type" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Row 4 -->
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">City/Country</div>
+                                <div class="value" id="saved-val-origin" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                            </div>
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: visible;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Direction</div>
+                                <div class="value" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; border-top-right-radius: 5px; border-bottom-right-radius: 5px; overflow: visible;">
+                                    <div id="saved-val-direction-badge">
+                                        <span class="badge-neutral">Pending</span>
+                                    </div>
+                                    
+                                    <!-- Hover Info Icon for Sentiment Reason -->
+                                    <div class="info-icon-container" id="saved-val-direction-info" style="display: none;">
+                                        <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                        </svg>
+                                        <div class="tooltip-text" id="saved-val-direction-tooltip">No details available.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 5 -->
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Sector</div>
+                                <div class="value" id="saved-val-sector" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                            </div>
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Channel</div>
+                                <div class="value" id="saved-val-channel" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Row 6 -->
+                        <div class="form-row" style="display: flex; gap: 12px;">
+                            <div class="form-group full" style="display: flex; flex-100%; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div class="label tall" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: flex-start; border-right: 1px solid var(--border-color);">Insight</div>
+                                <div class="value" id="saved-val-context" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Row 7 Actions -->
+                        <div class="form-row" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                            <button type="button" class="btn-secondary" onclick="closeSavedDetailPanel()" style="padding: 8px 16px;">Close</button>
+                            <button type="button" class="btn-primary" id="detail-delete-btn" style="background: #ef4444; border: none; padding: 8px 16px; color: white;" onclick="deleteSavedFromDetail()">Delete Article</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL & UPLOAD INTERACTIVE SCRIPT -->
+    <script>
+        // Manual Analysis Modal and Upload Logic
+        const fabBtn = document.getElementById('manual-fab-btn');
+        const modalContainer = document.getElementById('manual-modal-container');
+        const closeBtn = document.getElementById('modal-close-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        const submitBtn = document.getElementById('modal-submit-btn');
+        const submitSpinner = document.getElementById('submit-spinner');
+        const submitText = document.getElementById('submit-text');
+        const form = document.getElementById('manual-analysis-form');
+        const errorBanner = document.getElementById('error-banner');
+        
+        // Tabs
+        const tabs = document.querySelectorAll('.modal-tab');
+        const panes = document.querySelectorAll('.tab-pane');
+        let activeTab = 'paste-tab';
+
+        // File upload variables
+        const dropzone = document.getElementById('file-dropzone');
+        const fileInput = document.getElementById('manual-file-input');
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const removeFileBtn = document.getElementById('remove-file-btn');
+        let selectedFile = null;
+
+        // Open Modal
+        fabBtn.addEventListener('click', () => {
+            modalContainer.classList.add('show');
+            errorBanner.style.display = 'none';
+        });
+
+        // Close Modal
+        const closeModal = () => {
+            if (submitBtn.disabled) return; // Prevent closing while processing
+            modalContainer.classList.remove('show');
+            if (anySaved) {
+                // If any article was saved, reload the page to refresh manually saved list
+                window.location.reload();
+            } else {
+                resetForm();
+            }
+        };
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        // Reset Form
+        const resetForm = () => {
+            form.reset();
+            selectedFile = null;
+            fileInfo.style.display = 'none';
+            dropzone.style.display = 'block';
+            errorBanner.style.display = 'none';
+            submitText.textContent = "Analyze Article";
+            submitSpinner.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.style.background = 'var(--brand-color)';
+            anySaved = false;
+            if (typeof dismissPreview === 'function') dismissPreview();
+            if (typeof closeSavedDetailPanel === 'function') closeSavedDetailPanel();
+            
+            // Reset tab switcher to default state
+            tabs.forEach(t => t.classList.remove('active'));
+            panes.forEach(p => p.classList.remove('active'));
+            const defaultTab = document.querySelector('[data-tab="paste-tab"]');
+            if (defaultTab) defaultTab.classList.add('active');
+            const defaultPane = document.getElementById('paste-tab');
+            if (defaultPane) defaultPane.classList.add('active');
+            activeTab = 'paste-tab';
+            if (modalFooter) modalFooter.style.display = 'flex';
+        };
+
+        // Tab Switching
+        const modalFooter = document.querySelector('.modal-footer');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                if (submitBtn.disabled) return;
+                tabs.forEach(t => t.classList.remove('active'));
+                panes.forEach(p => p.classList.remove('active'));
+                
+                tab.classList.add('active');
+                activeTab = tab.getAttribute('data-tab');
+                document.getElementById(activeTab).classList.add('active');
+                errorBanner.style.display = 'none';
+                
+                // Hide footer for Saved tab, show for others
+                if (activeTab === 'saved-tab') {
+                    if (modalFooter) modalFooter.style.display = 'none';
+                    if (typeof dismissPreview === 'function') dismissPreview();
+                } else {
+                    if (modalFooter) modalFooter.style.display = 'flex';
+                }
+            });
+        });
+
+        // Global function to select a manually saved article
+        window.selectSavedArticle = (id) => {
+            closeModal();
+            window.location.search = '?select=' + id;
+        };
+
+        // File Drag & Drop
+        dropzone.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+
+        const handleFileSelect = (file) => {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext !== 'txt' && ext !== 'docx') {
+                showError("Invalid file type. Only .txt and .docx files are supported.");
+                return;
+            }
+            selectedFile = file;
+            fileName.textContent = file.name;
+            dropzone.style.display = 'none';
+            fileInfo.style.display = 'flex';
+            errorBanner.style.display = 'none';
+        };
+
+        removeFileBtn.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            dropzone.style.display = 'block';
+        });
+
+        const showError = (msg) => {
+            errorBanner.textContent = msg;
+            errorBanner.style.display = 'block';
+            errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        };
+
+        // Delete manual saved article functions
+        window.deleteSavedArticle = (event, id, listItem) => {
+            if (event) {
+                event.stopPropagation(); // Prevent opening the detail panel
+            }
+            if (!confirm("Are you sure you want to delete this article?")) return;
+            performDelete(id, listItem);
+        };
+
+        window.deleteSavedFromDetail = () => {
+            if (!selectedSavedArticleId) return;
+            if (!confirm("Are you sure you want to delete this article?")) return;
+            
+            const listItem = document.querySelector(`.saved-article-item[data-id="EVT-${selectedSavedArticleId}"]`);
+            performDelete(selectedSavedArticleId, listItem, () => {
+                closeSavedDetailPanel();
+            });
+        };
+
+        const performDelete = (id, listItem, onSuccess) => {
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            formData.append('delete', 'true');
+            formData.append('article_id', id);
+
+            fetch('/manual-analysis/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || "Failed to delete the article.");
+                }
+                return data;
+            })
+            .then(data => {
+                if (listItem) {
+                    listItem.remove();
+                }
+                
+                // Check if the list is now empty and show empty state
+                const listContainer = document.querySelector('.manual-saved-list');
+                if (listContainer && listContainer.querySelectorAll('.saved-article-item').length === 0) {
+                    listContainer.innerHTML = `
+                        <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem; background: #fff; border: 1px dashed var(--border-color); border-radius: 8px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px; color: var(--text-muted); margin-bottom: 8px; opacity: 0.6; display: inline-block;">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <div>No manually saved articles yet.</div>
+                        </div>
+                    `;
+                }
+                
+                anySaved = true; // Set this so page reloads on modal close to sync state
+                if (onSuccess) onSuccess();
+            })
+            .catch(error => {
+                showError("Delete failed: " + error.message);
+            });
+        };
+
+        // Global variables for preview and saving state
+        let currentPreviewArticles = [];
+        let anySaved = false;
+
+        // Dismiss Preview
+        const dismissPreview = () => {
+            const previewPanel = document.getElementById('modal-preview');
+            if (previewPanel) previewPanel.style.display = 'none';
+            const container = document.getElementById('preview-cards-container');
+            if (container) container.innerHTML = '';
+            currentPreviewArticles = [];
+        };
+
+        const prevCloseBtn = document.getElementById('prev-close-btn');
+        if (prevCloseBtn) {
+            prevCloseBtn.addEventListener('click', closeModal);
+        }
+
+        // Save a single preview article from the list
+        window.savePreviewArticle = (btn, index) => {
+            if (index < 0 || index >= currentPreviewArticles.length) return;
+            const article = currentPreviewArticles[index];
+            
+            const spinner = btn.querySelector('.single-save-spinner');
+            const textEl = btn.querySelector('.single-save-text');
+            
+            // Disable button and show spinner
+            btn.disabled = true;
+            if (spinner) spinner.style.display = 'inline-block';
+            if (textEl) textEl.textContent = "Saving...";
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            formData.append('save', 'true');
+
+            // Append all fields from the analyzed article object
+            for (const [key, value] of Object.entries(article)) {
+                if (key === 'matched_keywords' && Array.isArray(value)) {
+                    value.forEach(kw => formData.append('matched_keywords[]', kw));
+                } else {
+                    formData.append(key, value);
+                }
+            }
+
+            fetch('/manual-analysis/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || "Failed to save the article.");
+                }
+                return data;
+            })
+            .then(data => {
+                if (spinner) spinner.style.display = 'none';
+                if (textEl) textEl.textContent = "Saved ✓";
+                btn.style.background = '#10b981'; // Green color for success
+                anySaved = true;
+            })
+            .catch(error => {
+                btn.disabled = false;
+                if (spinner) spinner.style.display = 'none';
+                if (textEl) textEl.textContent = "Save to Feed";
+                showError("Save failed: " + error.message);
+            });
+        };
+
+        // Form Submit AJAX (Phase 1: Analyze only)
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            errorBanner.style.display = 'none';
+            dismissPreview();
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            if (activeTab === 'paste-tab') {
+                const pasteText = document.getElementById('manual-paste-text').value.trim();
+                if (!pasteText) {
+                    showError("Please paste your article content.");
+                    return;
+                }
+                formData.append('text', pasteText);
+            } else {
+                if (!selectedFile) {
+                    showError("Please drag & drop or select a file to upload.");
+                    return;
+                }
+                formData.append('file', selectedFile);
+            }
+
+            // UI feedback for processing
+            submitBtn.disabled = true;
+            submitSpinner.style.display = 'inline-block';
+            submitText.textContent = "Analyzing news...";
+
+            fetch('/manual-analysis/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || "Failed to analyze the content.");
+                }
+                return data;
+            })
+            .then(data => {
+                // Restore button state
+                submitSpinner.style.display = 'none';
+                submitText.textContent = "Analyze Article";
+                submitBtn.disabled = false;
+
+                // Store analyzed results
+                currentPreviewArticles = data.articles || [];
+                if (currentPreviewArticles.length === 0) {
+                    showError("No valid news articles could be processed.");
+                    return;
+                }
+
+                const container = document.getElementById('preview-cards-container');
+                container.innerHTML = '';
+
+                // Dynamically build and append cards for each article
+                currentPreviewArticles.forEach((article, idx) => {
+                    const score = article.impact_score !== undefined ? article.impact_score : 0;
+                    const directionText = article.direction ? (article.direction.charAt(0).toUpperCase() + article.direction.slice(1)) : 'Neutral';
+                    const scoreFormatted = score >= 0 ? `+${score}` : `${score}`;
+                    
+                    const cardHtml = `
+                        <div class="preview-card" style="border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 5px; background: white; padding: 18px; display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem; position: relative; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 5px;">
+                                <span style="font-weight: bold; color: var(--brand-color); font-size: 0.9rem;">Article #${idx + 1}</span>
+                                <button type="button" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #ef4444; line-height: 1; padding: 0;" onclick="this.closest('.preview-card').remove();" title="Remove from list">&times;</button>
+                            </div>
+                            
+                            <div style="display: flex; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div style="background: var(--bg-label); padding: 8px 12px; font-weight: 600; width: 100px; border-right: 1px solid var(--border-color); flex-shrink: 0; display: flex; align-items: center;">Headline</div>
+                                <div style="background: white; padding: 8px 12px; flex: 1; font-weight: 500;">
+                                    <a href="${article.link || '#'}" target="_blank" style="color: var(--brand-color); text-decoration: none;">${article.title}</a>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px;">
+                                <div style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                    <div style="background: var(--bg-label); padding: 8px 12px; font-weight: 600; width: 100px; border-right: 1px solid var(--border-color); flex-shrink: 0; display: flex; align-items: center;">Event Class</div>
+                                    <div style="background: white; padding: 8px 12px; flex: 1;">${(article.event_class || 'Macro_Economy').replace(/^L1[_\s\-]+/i, '').replace(/_/g, ' ')}</div>
+                                </div>
+                                <div style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                    <div style="background: var(--bg-label); padding: 8px 12px; font-weight: 600; width: 100px; border-right: 1px solid var(--border-color); flex-shrink: 0; display: flex; align-items: center;">Sector</div>
+                                    <div style="background: white; padding: 8px 12px; flex: 1;">${(article.sector || 'General / Macro').replace(/_/g, ' ')}</div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px;">
+                                <div style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                    <div style="background: var(--bg-label); padding: 8px 12px; font-weight: 600; width: 100px; border-right: 1px solid var(--border-color); flex-shrink: 0; display: flex; align-items: center;">Origin</div>
+                                    <div style="background: white; padding: 8px 12px; flex: 1;">${article.origin || 'Global'}</div>
+                                </div>
+                                <div style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                    <div style="background: var(--bg-label); padding: 8px 12px; font-weight: 600; width: 100px; border-right: 1px solid var(--border-color); flex-shrink: 0; display: flex; align-items: center;">Direction</div>
+                                    <div style="background: white; padding: 8px 12px; flex: 1;">
+                                        <span>${directionText}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div style="background: var(--bg-label); padding: 8px 12px; font-weight: 600; width: 100px; border-right: 1px solid var(--border-color); flex-shrink: 0; display: flex; align-items: center;">Channel</div>
+                                <div style="background: white; padding: 8px 12px; flex: 1;">${article.channel || 'Macroeconomic Transmission'}</div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                                <div style="background: var(--bg-label); padding: 8px 12px; font-weight: 600; border-bottom: 1px solid var(--border-color);">Insight</div>
+                                <div style="background: white; padding: 12px; line-height: 1.45;">${article.summary ? marked.parse(article.summary) : 'No insight generated.'}</div>
+                            </div>
+
+                            <div style="display: flex; justify-content: flex-end; margin-top: 5px;">
+                                <button type="button" class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem; background: #10b981; border: none; border-radius: 6px; color: white; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="savePreviewArticle(this, ${idx})">
+                                    <span class="spinner single-save-spinner" style="width: 12px; height: 12px; border-width: 1.5px; display: none;"></span>
+                                    <span class="single-save-text">Save to Feed</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', cardHtml);
+                });
+
+                // Show preview panel and scroll to it
+                const previewPanel = document.getElementById('modal-preview');
+                previewPanel.style.display = 'block';
+                previewPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitSpinner.style.display = 'none';
+                submitText.textContent = "Analyze Article";
+                showError(error.message);
+            });
+        });
+    </script>
+</body>
+</html>

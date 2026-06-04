@@ -1,0 +1,25 @@
+Original Description:
+<a href="https://news.google.com/rss/articles/CBMilAFBVV95cUxQaXRnNXJsRkFlT3hEMnZIMWMzQm01MEtXX2lZZ3MtQjRISjV6eHdXWW9FaHhBMjV2M3JTby15R0pPVTA4Z283ekJRVkpUbVJaUzhTMnE3S3VqWDBPQ040emw4UkduRVVhdDRJQnp2Z1JxdjJxblg0NDR2ekNiMHp2OGFwcGFBSkVWT0NJdG9VQTJqYk02?oc=5" target="_blank">Coinbase offers trading using Indian rupee</a>&nbsp;&nbsp;<font color="#6f6f6f">Reuters</font>
+
+Cleaned Description via clean_geotext:
+<a href=" target="_blank">Coinbase offers trading using Indian rupee</a>&nbsp;&nbsp;<font color="#6f6f6f">Reuters</font>
+
+Running extract_locations_hybrid...
+{
+  "cities": [],
+  "counties": [],
+  "locations": [],
+  "countries": [
+    "India"
+  ],
+  "origin": "India (Mumbai)",
+  "confidence": "medium (Ollama fallback)",
+  "spacy_found": {
+    "cities": [],
+    "counties": [],
+    "locations": [],
+    "countries": []
+  },
+  "explanation": "spaCy NER found no priority locations. Successfully resolved via local Ollama fallback.",
+  "method": "spacy_plus_ollama_fallback"
+}
