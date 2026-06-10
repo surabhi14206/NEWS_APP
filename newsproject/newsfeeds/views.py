@@ -137,6 +137,14 @@ def manual_analysis_view(request):
 
                 link = request.POST.get('link', '#') or '#'
                 
+                # Extract and clean event_class and sector values
+                event_class_val = request.POST.get('event_class', 'Macro_Economy') or 'Macro_Economy'
+                sector_val = request.POST.get('sector', 'General / Macro') or 'General / Macro'
+                if any(w in event_class_val.lower() for w in ("macro", "general")):
+                    event_class_val = ""
+                if any(w in sector_val.lower() for w in ("macro", "general")):
+                    sector_val = ""
+
                 # Duplicate check: check if title, link, and date all match an existing entry in DB
                 if NewsArticle.objects.filter(
                     title=title,
@@ -154,8 +162,8 @@ def manual_analysis_view(request):
                         reason=request.POST.get('reason', ''),
                         matched_keywords=matched_kws,
                         is_relevant=False,
-                        event_class=request.POST.get('event_class', 'Macro_Economy'),
-                        sector=request.POST.get('sector', 'General / Macro'),
+                        event_class=event_class_val,
+                        sector=sector_val,
                         sub_type=request.POST.get('sub_type', 'General_Terms (General)'),
                         channel=request.POST.get('channel', 'Macroeconomic Transmission'),
                         direction=request.POST.get('direction', 'neutral'),
@@ -188,8 +196,8 @@ def manual_analysis_view(request):
                             'is_relevant': False,
                             
                             # Taxonomy
-                            'event_class': request.POST.get('event_class', 'Macro_Economy'),
-                            'sector': request.POST.get('sector', 'General / Macro'),
+                            'event_class': event_class_val,
+                            'sector': sector_val,
                             'sub_type': request.POST.get('sub_type', 'General_Terms (General)'),
                             'channel': request.POST.get('channel', 'Macroeconomic Transmission'),
                             

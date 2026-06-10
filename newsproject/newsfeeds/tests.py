@@ -257,3 +257,65 @@ class ManualAnalysisTestCase(TestCase):
         article_id = data['article']['id']
         self.assertTrue(NewsArticle.objects.filter(id=article_id).exists())
 
+    def test_general_macro_blanking_in_view(self):
+        url = reverse('manual_analysis')
+        post_data = {
+            'save': 'true',
+            'title': 'General Macro Blanking Test',
+            'link': 'http://example.com/blank',
+            'source': 'Manual Source',
+            'published_date': '01 Jun 2026',
+            'description': 'Description.',
+            'summary': 'Summary.',
+            'reason': 'Analyzed manually.',
+            'event_class': 'Macro_Economy',
+            'sector': 'General / Macro',
+            'sub_type': 'General_Terms (General)',
+            'channel': 'Macroeconomic Transmission',
+            'direction': 'positive',
+            'impact_score': 3,
+            'direction_reason': 'Positive GDP growth.',
+            'origin': 'India'
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        
+        article_id = data['article']['id']
+        article = NewsArticle.objects.get(id=article_id)
+        self.assertEqual(article.event_class, "")
+        self.assertEqual(article.sector, "")
+
+    def test_general_macro_blanking_in_process_manual_article(self):
+        from newsfeeds.management.commands.manual_analysis import process_manual_article
+        from unittest.mock import patch
+        
+        # Mocking classification response to return general/macro
+        mock_classification = {
+            'event_class': 'Macro_Economy',
+            'sector': 'General / Macro',
+            'sub_type': 'General_Terms (General)',
+            'channel': 'Macroeconomic Transmission'
+        }
+        
+        test_art = {
+            'title': 'CLI General Macro Test',
+            'link': 'http://example.com/cli-blank',
+            'description': 'Test article description.',
+            'source': 'CLI Source',
+            'published_date': '01 Jun 2026'
+        }
+        
+        with patch('newsfeeds.management.commands.fetch_indian_economy_news.classify_article_with_ollama', return_value=mock_classification):
+            with patch('newsfeeds.management.commands.fetch_indian_economy_news.generate_summary', return_value='summary'):
+                with patch('newsfeeds.management.commands.fetch_indian_economy_news.analyze_direction_from_india_view', return_value={'direction': 'neutral', 'impact_score': 0, 'reason': ''}):
+                    res = process_manual_article(test_art, save_to_db=True)
+                    self.assertEqual(res['status'], 'success')
+                    self.assertTrue(res['saved'])
+                    
+                    # Verify saved article
+                    article = NewsArticle.objects.get(title='CLI General Macro Test')
+                    self.assertEqual(article.event_class, "")
+                    self.assertEqual(article.sector, "")
+
