@@ -15,12 +15,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
-try:
-    from .channel_maps import ChannelMapper, CHANNEL_MAP
-    from .ollama_ch_maps import OllamaChannelMapper
-except (ImportError, ValueError):
-    from channel_maps import ChannelMapper, CHANNEL_MAP
-    from ollama_ch_maps import OllamaChannelMapper
+from newsfeeds.management.commands.channel_maps import ChannelMapper, CHANNEL_MAP
+from newsfeeds.management.commands.ollama_ch_maps import OllamaChannelMapper
 
 channel_mapper = ChannelMapper()
 ollama_channel_mapper = OllamaChannelMapper()
