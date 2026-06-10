@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.views.generic import ListView
-from .models import NewsArticle, DuplicateNewsArticle
+from newsfeeds.models import NewsArticle, DuplicateNewsArticle
 
 class DashboardView(ListView):
     model = NewsArticle
@@ -79,7 +79,7 @@ def trigger_fetch(request):
 
 
 from django.http import JsonResponse
-from .management.commands.manual_analysis import parse_manual_content, process_manual_article, read_docx_text, parse_multiple_manual_contents
+from newsfeeds.management.commands.manual_analysis import parse_manual_content, process_manual_article, read_docx_text, parse_multiple_manual_contents
 
 def manual_analysis_view(request):
     if request.method == 'POST':
