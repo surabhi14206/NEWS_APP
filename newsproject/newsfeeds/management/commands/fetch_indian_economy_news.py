@@ -1002,16 +1002,18 @@ class Command(BaseCommand):
                 pass
         self.stdout.write("Starting news analysis for Indian Economy...\n")
         
-        # Check if local Ollama is running at startup to avoid slow socket connection timeouts
+        # Check if local Ollama is running at startup to verify service status
         global OLLAMA_AVAILABLE
         try:
-            r = requests.get("http://localhost:11434/", timeout=0.3)
+            r = requests.get("http://localhost:11434/", timeout=0.5)
             OLLAMA_AVAILABLE = (r.status_code == 200)
         except Exception:
             OLLAMA_AVAILABLE = False
             
         if not OLLAMA_AVAILABLE:
-            self.stdout.write("  [INFO] Local Ollama is offline. Resilient fast fallback mode enabled (bypassing connection timeouts).")
+            self.stderr.write("CRITICAL ERROR: local Ollama is not running! Please start the Ollama service before running news fetch.")
+            import sys
+            sys.exit(1)
         
         # Clean up any existing articles with general/macro classifications from database
         try:

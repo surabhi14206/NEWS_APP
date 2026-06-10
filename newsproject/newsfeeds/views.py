@@ -49,6 +49,19 @@ import threading
 from django.contrib import messages
 
 def trigger_fetch(request):
+    # Check if local Ollama is running before starting the fetch process
+    import requests
+    ollama_running = False
+    try:
+        r = requests.get("http://localhost:11434/", timeout=0.5)
+        ollama_running = (r.status_code == 200)
+    except Exception:
+        ollama_running = False
+        
+    if not ollama_running:
+        messages.error(request, "Error: Ollama is not running! Please start the Ollama service locally before clicking Refresh.")
+        return redirect('dashboard')
+
     # For manual trigger from dashboard, run in background thread
     from django.core.management import call_command
     
@@ -84,6 +97,18 @@ def manual_analysis_view(request):
                 return JsonResponse({'status': 'success', 'deleted': True})
             except Exception as e:
                 return JsonResponse({'status': 'error', 'message': f'Failed to delete article: {str(e)}'}, status=500)
+
+        # Check if local Ollama is running before manual analysis/save operations
+        import requests
+        ollama_running = False
+        try:
+            r = requests.get("http://localhost:11434/", timeout=0.5)
+            ollama_running = (r.status_code == 200)
+        except Exception:
+            ollama_running = False
+            
+        if not ollama_running:
+            return JsonResponse({'status': 'error', 'message': 'Ollama is not running. Please start the Ollama service locally before performing manual analysis.'}, status=503)
 
         # Check if this is a save operation
         if request.POST.get('save') == 'true':

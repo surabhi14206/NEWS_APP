@@ -78,12 +78,14 @@ def parse_multiple_manual_contents(text_content: str) -> list:
 
 def process_manual_article(art: dict, save_to_db: bool = False) -> dict:
     """Runs the full Indian economy classification & analysis pipeline on a manual article."""
-    # 1. Setup Ollama status dynamically in fetch command to prevent timeouts
     try:
-        r = requests.get("http://localhost:11434/", timeout=0.3)
+        r = requests.get("http://localhost:11434/", timeout=0.5)
         fetch_indian_economy_news.OLLAMA_AVAILABLE = (r.status_code == 200)
     except Exception:
         fetch_indian_economy_news.OLLAMA_AVAILABLE = False
+
+    if not fetch_indian_economy_news.OLLAMA_AVAILABLE:
+        raise ConnectionError("Ollama is not running. Please start the Ollama service before running manual analysis.")
 
     title = art.get('title', '').strip()
     link = art.get('link', '').strip()
@@ -280,6 +282,18 @@ class Command(BaseCommand):
         parser.add_argument('--text', type=str, help='Raw text contents to parse and analyze.')
         
     def handle(self, *args, **options):
+        # Check if local Ollama is running
+        try:
+            r = requests.get("http://localhost:11434/", timeout=0.5)
+            ollama_running = (r.status_code == 200)
+        except Exception:
+            ollama_running = False
+            
+        if not ollama_running:
+            self.stderr.write("CRITICAL ERROR: local Ollama is not running! Please start the Ollama service before running manual analysis.")
+            import sys
+            sys.exit(1)
+
         text = options.get('text')
         if not text:
             self.stderr.write("Please provide text using --text")
