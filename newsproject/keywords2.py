@@ -1810,65 +1810,7 @@ tema_keywords = {
         ]
     },
 
-    "Macro_Economy": {
-        "Core_Macroeconomic_Concepts": [
-            # Core Economic Concepts
-            "Economy", "Economic", "Financial", "Market", "Growth", "Inflation", "Policy",
-            "GDP", "GVA", "Rupee", "Crude Oil", "Economic Outlook", "Financial Stability",
-            
-            # Economic Cycles & Conditions
-            "Slowdown", "Recovery", "Expansion", "Contraction", "Recession", "Boom",
-            "Stagflation", "Deflation", "Disinflation", "Depression", "Business Cycle",
-            "Soft Landing", "Hard Landing", "Economic Downturn", "Economic Upturn",
-            
-            # Market & Sentiment
-            "Economic Sentiment", "Investor Confidence", "Consumer Confidence",
-            "Market Volatility", "Risk Aversion", "Risk Appetite", "Bear Market",
-            "Bull Market", "Market Rally", "Market Crash", "Correction", "Sentiment Index",
-            
-            # Global & Macro Context
-            "Global Economy", "Emerging Markets", "Developing Economy", "Macroeconomic",
-            "Advanced Economies", "World Economy", "Global Growth", "Geopolitical Risk",
-            "Economic Uncertainty", "Macroeconomic Stability", "Systemic Risk",
-            
-            # Resilience & Vulnerability
-            "Resilience", "Vulnerability", "Economic Shock", "External Shock",
-            "Contagion", "Economic Headwinds", "Economic Tailwinds", "Structural Weakness",
-            
-            # Miscellaneous High-Value Terms
-            "Monetary Policy", "Fiscal Policy", "Budget", "Inflation Targeting",
-            "Central Bank", "RBI", "Interest Rate", "Liquidity", "Capital Flow",
-            "Foreign Investment", "FDI", "FII", "Portfolio Flow", "Economic Indicator",
-            "Leading Indicator", "Lagging Indicator"
-        ],
-        
-        "Macroeconomic_Indicators": [
-            "GDP Growth", "Industrial Production", "IIP", "Manufacturing PMI",
-            "Services PMI", "Unemployment Rate", "Fiscal Deficit", "Government Spending",
-            "Revenue Collection", "Tax Buoyancy", "Retail Inflation", "CPI", "WPI",
-            "Core Inflation", "Wholesale Price Index", "Consumer Price Index",
-            "Repo Rate", "Reverse Repo", "CRR", "SLR", "Current Account Deficit", "CAD",
-            "Balance of Payments", "Forex Reserves", "Export Growth", "Import Growth",
-            "Trade Deficit", "Trade Surplus", "Purchasing Managers Index", "PMI",
-            "Consumer Confidence Index", "Capacity Utilization", "Bank Credit Growth",
-            "Deposit Growth", "Non-Performing Assets", "NPA", "Gross Value Added", "GVA"
-        ],
-        
-        "Economic_Policies_And_Reforms": [
-            "Monetary Policy", "Fiscal Policy", "Budget", "Economic Survey",
-            "Union Budget", "RBI Annual Report", "Economic Reform", "Structural Reform",
-            "Liberalization", "Privatization", "Globalization", "Atmanirbhar Bharat",
-            "Make in India", "Production Linked Incentive", "PLI Scheme",
-            "Goods and Services Tax", "GST", "Direct Tax", "Indirect Tax",
-            "Tax Reform", "Subsidy", "Fiscal Stimulus", "Economic Package",
-            "Monetary Easing", "Monetary Tightening", "Interest Rate Cut", "Rate Hike",
-            "Quantitative Easing", "Liquidity Injection", "Capital Expenditure", "Capex",
-            "Disinvestment", "Privatisation", "Public Sector Undertaking", "PSU",
-            "Land Reform", "Labour Reform", "Farm Law", "Agriculture Policy",
-            "Export Policy", "Import Duty", "Tariff", "Anti-Dumping Duty"
-        ]
-
-    },
+    
     "Information_Technology_AIML_DS": {
         "Artificial_Intelligence": [
             "AI GDP contribution", "AI economic impact", "AI job creation", "AI productivity boost",

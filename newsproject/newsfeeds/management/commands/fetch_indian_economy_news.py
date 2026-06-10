@@ -264,7 +264,24 @@ def get_channels_from_mapper(event_class: str, subtype: str, title: str = "", de
         # Return a list of channel names
         return [ch["name"] for ch in res.channels]
     
-    return []
+def get_matched_keywords_for_sector(sector_name: str, text: str) -> list[str]:
+    if not sector_name or sector_name == "General / Macro":
+        return []
+    keywords = sector_keywords.get(sector_name, [])
+    matched = []
+    text_lower = text.lower()
+    for kw in keywords:
+        kw_lower = kw.lower()
+        if kw_lower in text_lower:
+            matched.append(kw)
+    # Sort matched keywords by length in descending order to get the most specific keyword first,
+    # then take the top 3 unique ones
+    matched.sort(key=len, reverse=True)
+    unique_matched = []
+    for m in matched:
+        if m not in unique_matched:
+            unique_matched.append(m)
+    return unique_matched[:3]
 
 
 def classify_article(title: str, description: str, full_text: str = "") -> dict:
@@ -325,6 +342,12 @@ def classify_article(title: str, description: str, full_text: str = "") -> dict:
         "General / Macro": "Macro Transmission & GDP"
     }
     fallback_channel = channel_mapping.get(best_sector, "Macroeconomic Transmission")
+    
+    best_sector_display = best_sector
+    if best_sector in matched_by_sector and matched_by_sector[best_sector]:
+        matched_kws_sec = list(dict.fromkeys(matched_by_sector[best_sector]))[:3]
+        if matched_kws_sec:
+            best_sector_display = f"{best_sector} ({', '.join(matched_kws_sec)})"
         
     if matched_kws:
         # Sort by matched keyword length descending to get the most specific keyword first
@@ -344,7 +367,7 @@ def classify_article(title: str, description: str, full_text: str = "") -> dict:
         
         return {
             "event_class": best_l1,
-            "sector": best_sector,
+            "sector": best_sector_display,
             "sub_type": f"{best_l2} ({l2_matches_str})",
             "channel": channel,
             "all_matched": list(dict.fromkeys([m[2] for m in matched_kws]))  # keep unique, preserve order
@@ -352,7 +375,7 @@ def classify_article(title: str, description: str, full_text: str = "") -> dict:
         
     return {
         "event_class": "Macro_Economy",
-        "sector": best_sector,
+        "sector": best_sector_display,
         "sub_type": f"General_Terms ({best_kw})" if best_kw != "Economy" else "General_Terms (General)",
         "channel": fallback_channel,
         "all_matched": []
@@ -628,9 +651,16 @@ INSTRUCTIONS:
             else:
                 channel = chan
             
+        # Format sector with matching keywords
+        text_for_sector = (title + " " + description + " " + full_text).lower()
+        sector_kws = get_matched_keywords_for_sector(sector, text_for_sector)
+        sector_display = sector
+        if sector_kws:
+            sector_display = f"{sector} ({', '.join(sector_kws)})"
+            
         return {
             "event_class": e_class,
-            "sector": sector,
+            "sector": sector_display,
             "sub_type": s_type,
             "channel": channel
         }
@@ -982,6 +1012,20 @@ class Command(BaseCommand):
             
         if not OLLAMA_AVAILABLE:
             self.stdout.write("  [INFO] Local Ollama is offline. Resilient fast fallback mode enabled (bypassing connection timeouts).")
+        
+        # Clean up any existing articles with general/macro classifications from database
+        try:
+            from django.db.models import Q
+            deleted_count, _ = NewsArticle.objects.filter(
+                Q(event_class__icontains="macro") |
+                Q(event_class__icontains="general") |
+                Q(sector__icontains="macro") |
+                Q(sector__icontains="general")
+            ).delete()
+            if deleted_count > 0:
+                self.stdout.write(f"  [INFO] Cleaned up {deleted_count} existing general/macro articles from the database.")
+        except Exception as e:
+            self.stdout.write(f"  [WARNING] Failed to run database cleanup for general/macro articles: {e}")
         
         now = datetime.now()
         
@@ -1508,6 +1552,40 @@ class Command(BaseCommand):
                 # G. Save/Update in Django database
                 self.stdout.write(f"  Saving to Django database...")
                 try:
+                    # Check for general output in event class and sector
+                    event_class_val = classification.get('event_class', '')
+                    sector_val = classification.get('sector', '')
+                    
+                    event_class_lower = event_class_val.lower()
+                    sector_lower = sector_val.lower()
+                    
+                    is_general = (
+                        "macro" in event_class_lower or
+                        "general" in event_class_lower or
+                        "macro" in sector_lower or
+                        "general" in sector_lower
+                    )
+                    
+                    if is_general:
+                        self.stdout.write(f"  -> SKIPPED DB SAVE: Article has general/macro classification (Event Class: {event_class_val}, Sector: {sector_val}).")
+                        # Remove it from the database if it exists
+                        deleted_count, _ = NewsArticle.objects.filter(
+                            title=art["title"]
+                        ).delete()
+                        if deleted_count > 0:
+                            self.stdout.write(f"     Removed {deleted_count} existing article(s) from database.")
+                            
+                        entry_log["status"] = "skipped_general"
+                        entry_log["skip_reason"] = f"General/macro classification (Event Class: {event_class_val}, Sector: {sector_val})."
+                        entry_log["steps"].append({
+                            "step": "Save to Database",
+                            "status": "SKIPPED",
+                            "detail": f"Skipped saving and removed from DB due to general classification."
+                        })
+                        all_articles_log.append(entry_log)
+                        save_live_outputs_stream()
+                        continue
+
                     relevance_val = entry_log["analysis"]["relevance"]
                     pub_date = make_aware(datetime.fromisoformat(art["published_date"]))
                     

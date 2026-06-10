@@ -162,6 +162,31 @@ def process_manual_article(art: dict, save_to_db: bool = False) -> dict:
         }
 
     # 7. Save/Update in Django database
+    event_class_val = classification.get('event_class', 'Macro_Economy')
+    sector_val = classification.get('sector', 'General / Macro')
+    
+    event_class_lower = event_class_val.lower()
+    sector_lower = sector_val.lower()
+    
+    is_general = (
+        "macro" in event_class_lower or
+        "general" in event_class_lower or
+        "macro" in sector_lower or
+        "general" in sector_lower
+    )
+    
+    if is_general:
+        # Remove it from the database if it exists
+        deleted_count, _ = NewsArticle.objects.filter(title=title).delete()
+        from newsfeeds.models import DuplicateNewsArticle
+        DuplicateNewsArticle.objects.filter(title=title).delete()
+        
+        return {
+            "status": "skipped_general",
+            "saved": False,
+            "reason": f"General/macro classification (Event Class: {event_class_val}, Sector: {sector_val}). Removed from DB if present."
+        }
+
     # Test to avoid duplicate news (check if title, link, and date all match an existing entry in DB)
     if NewsArticle.objects.filter(
         title=title,
