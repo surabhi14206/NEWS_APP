@@ -334,8 +334,7 @@ def classify_article(title: str, description: str, full_text: str = "") -> dict:
         "Defense_and_Aerospace": "Atmanirbhar Defence & Exports",
         "Textiles_and_Apparel": "Textile Exports & Garment Jobs",
         "Retail_and_Ecommerce": "Retail Spending & E-commerce",
-        "Startups_and_Venture_Capital": "Venture Capital & Unicorns",
-        "General / Macro": "Macro Transmission & GDP"
+        "Startups_and_Venture_Capital": "Venture Capital & Unicorns"
     }
     fallback_channel = channel_mapping.get(best_sector, "Macroeconomic Transmission")
     
@@ -1096,8 +1095,15 @@ class Command(BaseCommand):
 
         # Helper to compute Jaccard Similarity for headlines
         def get_jaccard_similarity(title1: str, title2: str) -> float:
-            w1 = set(w for w in title1.lower().split() if w.isalnum())
-            w2 = set(w for w in title2.lower().split() if w.isalnum())
+            import re
+            def get_words(title: str):
+                # Replace hyphens with spaces to split compound words
+                t = title.lower().replace('-', ' ')
+                # Remove punctuation
+                t = re.sub(r'[^\w\s]', '', t)
+                return set(t.split())
+            w1 = get_words(title1)
+            w2 = get_words(title2)
             if not w1 or not w2:
                 return 0.0
             return len(w1.intersection(w2)) / len(w1.union(w2))
@@ -1588,17 +1594,37 @@ class Command(BaseCommand):
                     pub_date = make_aware(datetime.fromisoformat(art["published_date"]))
                     
                     # Test to avoid duplicate news (check if title, link, and date all match an existing entry in DB)
-                    if NewsArticle.objects.filter(
+                    # Or if there is any article in the DB from the last 7 days with a Jaccard similarity >= 0.8
+                    seven_days_ago = pub_date - timedelta(days=7)
+                    recent_articles = NewsArticle.objects.filter(
+                        published_date__gte=seven_days_ago
+                    )
+                    
+                    db_duplicate = False
+                    db_dup_reason = ""
+                    for existing_db in recent_articles:
+                        if art["title"].lower() == existing_db.title.lower():
+                            db_duplicate = True
+                            db_dup_reason = f"Exact match with DB article: '{existing_db.title}'"
+                            break
+                        sim = get_jaccard_similarity(art["title"], existing_db.title)
+                        if sim >= 0.8:
+                            db_duplicate = True
+                            db_dup_reason = f"Highly similar DB headline (Jaccard sim: {sim:.2f}) to: '{existing_db.title}'"
+                            break
+                            
+                    if db_duplicate or NewsArticle.objects.filter(
                         title=art["title"],
                         link=art["link"] or '#',
                         published_date=pub_date
                     ).exists():
-                        self.stdout.write(f"  -> SKIPPED: Article is a duplicate (title, link, and date all match an existing entry in DB).")
+                        detail_msg = db_dup_reason or "Article already exists in DB with identical title, link, and date."
+                        self.stdout.write(f"  -> SKIPPED: Article is a duplicate ({detail_msg}).")
                         entry_log["status"] = "skipped_duplicate_db"
                         entry_log["steps"].append({
                             "step": "Database Duplicate Check",
                             "status": "REJECTED",
-                            "detail": "Article already exists in DB with identical title, link, and date."
+                            "detail": detail_msg
                         })
                         all_articles_log.append(entry_log)
                         save_live_outputs_stream()

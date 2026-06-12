@@ -173,7 +173,31 @@ def extract_locations_hybrid(title: str, description: str = "", full_text: str =
     
     # Priority country list for classification context
     priority_countries = ["India", "US", "Iran", "China"]
-    matched_priorities = [c for c in priority_countries if c in unique_countries]
+    
+    # Identify if any country is explicitly mentioned (or implied by city) in the title
+    title_countries = set()
+    title_lower = title.lower()
+    for country in COMMON_COUNTRIES:
+        if re.search(r'\b' + re.escape(country) + r'\b', title_lower):
+            if country in ("us", "usa", "united states"):
+                title_countries.add("US")
+            elif country in ("uk", "united kingdom"):
+                title_countries.add("UK")
+            else:
+                title_countries.add(country.title())
+    for country in ["india", "china", "iran"]:
+        if re.search(r'\b' + re.escape(country) + r'\b', title_lower):
+            title_countries.add(country.title())
+    for city, country in CITY_COUNTRY_MAP.items():
+        if re.search(r'\b' + re.escape(city) + r'\b', title_lower):
+            title_countries.add(country)
+            
+    # If title countries are matched in the text, prioritize them
+    title_matched = [c for c in unique_countries if c in title_countries]
+    if title_matched:
+        matched_priorities = title_matched
+    else:
+        matched_priorities = [c for c in priority_countries if c in unique_countries]
 
     if matched_priorities:
         # Use target priority countries

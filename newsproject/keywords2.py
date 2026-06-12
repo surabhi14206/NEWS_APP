@@ -1694,6 +1694,8 @@ tema_keywords = {
             # Headline & Overall Inflation
             "Inflation", "Headline Inflation", "Retail Inflation", "CPI Inflation",
             "CPI", "WPI", "Wholesale Inflation", "Producer Price Index", "PPI",
+            "US Producer Prices", "Producer Prices Rise", "Iran war fallout",
+            "Strait of Hormuz blockade",
             
             # Core & Breakdown Inflation
             "Core Inflation", "Core CPI", "Non-Food Inflation", "Services Inflation",
@@ -2066,7 +2068,9 @@ sector_keywords = {
         "Rupee vs Crude Oil", "Refining Capacity", "Exploration & Production",
         "Oil & Gas GDP", "Petroleum Subsidy", "LNG Terminal", "Natural Gas Pricing",
         "City Gas Distribution", "CGD Network", "Oil Marketing Margin", 
-        "Upstream Investment", "Hydrocarbon Exploration", "Energy Transition Impact"
+        "Upstream Investment", "Hydrocarbon Exploration", "Energy Transition Impact",
+        "US Producer Prices", "Producer Prices Rise", "Iran war fallout",
+        "Strait of Hormuz blockade"
     ],
 
     "Cement_and_Construction_Materials": [

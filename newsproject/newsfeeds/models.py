@@ -12,6 +12,8 @@ class NewsArticle(models.Model):
     reason = models.TextField(blank=True)           # LLM insight
     matched_keywords = models.JSONField(default=list)
     is_relevant = models.BooleanField(default=True)
+    is_scraped = models.BooleanField(default=False)
+    is_channel_mapped = models.BooleanField(default=False)
     
     # Taxonomy classification fields
     event_class = models.CharField(max_length=200, blank=True, default='Economic Impact')
@@ -57,6 +59,8 @@ class DuplicateNewsArticle(models.Model):
     reason = models.TextField(blank=True)           # LLM insight
     matched_keywords = models.JSONField(default=list)
     is_relevant = models.BooleanField(default=True)
+    is_scraped = models.BooleanField(default=False)
+    is_channel_mapped = models.BooleanField(default=False)
     
     # Taxonomy classification fields
     event_class = models.CharField(max_length=200, blank=True, default='Economic Impact')

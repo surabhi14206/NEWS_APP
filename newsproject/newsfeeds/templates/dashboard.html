@@ -85,6 +85,7 @@
         }
 
         .article-card {
+            position: relative;
             padding: 15px;
             margin-bottom: 10px;
             border-radius: 8px;
@@ -92,6 +93,48 @@
             cursor: pointer;
             transition: all 0.2s ease;
             background: #fff;
+        }
+        
+        .scraping-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #2563eb;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+        
+        .channel-source-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            text-transform: lowercase;
+            vertical-align: middle;
+            line-height: 1.2;
+            margin-left: 6px;
+        }
+        
+        .badge-channel-map {
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+        
+        .badge-ollama {
+            background: #f3e8ff;
+            color: #6b21a8;
+            border: 1px solid #e9d5ff;
         }
 
         .article-card:hover {
@@ -707,9 +750,16 @@
                  data-sector="{{ article.sector }}"
                  data-sub-type="{{ article.sub_type }}"
                  data-channel="{{ article.channel }}"
-                 data-origin="{{ article.origin|default:'Global' }}">
+                 data-origin="{{ article.origin|default:'Global' }}"
+                 data-is-scraped="{{ article.is_scraped|yesno:'true,false' }}"
+                 data-is-channel-mapped="{{ article.is_channel_mapped|yesno:'true,false' }}">
                 
-                <div class="card-meta">{{ article.source }} • {{ article.published_date|date:"d M y" }}</div>
+                <div class="card-meta">
+                    {{ article.source }} • {{ article.published_date|date:"d M y" }}
+                    {% if article.is_scraped %}
+                    <span class="scraping-badge" title="Scraped with Selenium">s</span>
+                    {% endif %}
+                </div>
                 <h3 class="card-title">{{ article.title }}</h3>
                 {% if article.matched_keywords %}
                 <span class="card-keywords">{{ article.matched_keywords.0 }}</span>
@@ -810,7 +860,10 @@
                     </div>
                     <div class="form-group">
                         <div class="label">Channel</div>
-                        <div class="value" id="val-channel">News & Media</div>
+                        <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                            <span id="val-channel">News & Media</span>
+                            <span id="val-channel-badge" class="channel-source-badge" style="display: none;">c</span>
+                        </div>
                     </div>
                 </div>
 
@@ -864,6 +917,15 @@
             document.getElementById('val-event-class').textContent = eventClass ? eventClass.replace(/^L1[_\s\-]+/i, '').replace(/_/g, ' ') : "Economic Impact";
             document.getElementById('val-sub-type').textContent = subType ? subType.replace(/^L2[_\s\-]+/i, '').replace(/_/g, ' ') : "General News";
             document.getElementById('val-channel').textContent = channel || "News & Media";
+            
+            const isChannelMapped = card.getAttribute('data-is-channel-mapped') === 'true';
+            const channelBadge = document.getElementById('val-channel-badge');
+            if (channelBadge) {
+                channelBadge.textContent = isChannelMapped ? 'c' : 'o';
+                channelBadge.className = 'channel-source-badge ' + (isChannelMapped ? 'badge-channel-map' : 'badge-ollama');
+                channelBadge.title = isChannelMapped ? 'Mapped via Channel Rules' : 'Classified via Ollama';
+                channelBadge.style.display = 'inline-block';
+            }
             
             const headlineEl = document.getElementById('val-headline');
             headlineEl.textContent = title;
@@ -959,6 +1021,15 @@
             document.getElementById('saved-val-event-class').textContent = eventClass ? eventClass.replace(/^L1[_\s\-]+/i, '').replace(/_/g, ' ') : "Economic Impact";
             document.getElementById('saved-val-sub-type').textContent = subType ? subType.replace(/^L2[_\s\-]+/i, '').replace(/_/g, ' ') : "General News";
             document.getElementById('saved-val-channel').textContent = channel || "News & Media";
+            
+            const isChannelMappedSaved = card.getAttribute('data-is-channel-mapped') === 'true';
+            const channelBadgeSaved = document.getElementById('saved-val-channel-badge');
+            if (channelBadgeSaved) {
+                channelBadgeSaved.textContent = isChannelMappedSaved ? 'c' : 'o';
+                channelBadgeSaved.className = 'channel-source-badge ' + (isChannelMappedSaved ? 'badge-channel-map' : 'badge-ollama');
+                channelBadgeSaved.title = isChannelMappedSaved ? 'Mapped via Channel Rules' : 'Classified via Ollama';
+                channelBadgeSaved.style.display = 'inline-block';
+            }
             
             const headlineEl = document.getElementById('saved-val-headline');
             headlineEl.textContent = title;
@@ -1207,6 +1278,7 @@
                         <div class="manual-saved-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 450px; overflow-y: auto; padding: 2px;">
                             {% for article in manual_articles %}
                             <div class="saved-article-item" 
+                                 style="position: relative;"
                                  onclick="showSavedArticleDetail(this)"
                                  data-id="EVT-{{ article.custom_id }}"
                                  data-date="{{ article.published_date|date:'d M Y' }}"
@@ -1222,14 +1294,19 @@
                                  data-sector="{{ article.sector }}"
                                  data-sub-type="{{ article.sub_type }}"
                                  data-channel="{{ article.channel }}"
-                                 data-origin="{{ article.origin|default:'Global' }}">
+                                 data-origin="{{ article.origin|default:'Global' }}"
+                                 data-is-scraped="{{ article.is_scraped|yesno:'true,false' }}"
+                                 data-is-channel-mapped="{{ article.is_channel_mapped|yesno:'true,false' }}">
                                 <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; font-weight: 500;">
-                                    <span>
-                                        {{ article.source }} • {{ article.published_date|date:"d M Y" }}
-                                        {% if article.is_duplicate %}
-                                        <span style="background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 1px 5px; border-radius: 4px; font-weight: 600; margin-left: 5px; font-size: 0.65rem; text-transform: uppercase; display: inline-block; vertical-align: middle;">Duplicate</span>
-                                        {% endif %}
-                                    </span>
+                                     <span>
+                                         {{ article.source }} • {{ article.published_date|date:"d M Y" }}
+                                         {% if article.is_scraped %}
+                                         <span style="background: #2563eb; color: white; font-size: 0.65rem; font-weight: 700; width: 14px; height: 14px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-left: 5px; vertical-align: middle;" title="Scraped with Selenium">s</span>
+                                         {% endif %}
+                                         {% if article.is_duplicate %}
+                                         <span style="background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 1px 5px; border-radius: 4px; font-weight: 600; margin-left: 5px; font-size: 0.65rem; text-transform: uppercase; display: inline-block; vertical-align: middle;">Duplicate</span>
+                                         {% endif %}
+                                     </span>
                                     <button type="button" class="delete-saved-btn" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 0.8rem; padding: 2px 5px; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.7;" onmouseout="this.style.opacity=1;" onclick="deleteSavedArticle(event, '{{ article.custom_id }}', this.closest('.saved-article-item'))">Delete</button>
                                 </div>
                                 <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); line-height: 1.35; margin-bottom: 6px;">{{ article.title }}</div>
@@ -1349,7 +1426,10 @@
                             </div>
                             <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
                                 <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Channel</div>
-                                <div class="value" id="saved-val-channel" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                                <div class="value" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; justify-content: space-between; line-height: 1.5;">
+                                    <span id="saved-val-channel">-</span>
+                                    <span id="saved-val-channel-badge" class="channel-source-badge" style="display: none;">c</span>
+                                </div>
                             </div>
                         </div>
 

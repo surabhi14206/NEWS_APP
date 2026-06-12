@@ -122,6 +122,8 @@ def process_manual_article(art: dict, save_to_db: bool = False) -> dict:
     
     event_class_val = classification.get('event_class', 'Macro_Economy') or 'Macro_Economy'
     sector_val = classification.get('sector', 'General / Macro') or 'General / Macro'
+    
+    # Check for general/macro classification and blank them out
     if any(w in event_class_val.lower() for w in ("macro", "general")):
         event_class_val = ""
     if any(w in sector_val.lower() for w in ("macro", "general")):

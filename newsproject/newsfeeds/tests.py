@@ -319,3 +319,40 @@ class ManualAnalysisTestCase(TestCase):
                     self.assertEqual(article.event_class, "")
                     self.assertEqual(article.sector, "")
 
+    def test_fetch_command_startup_cleanup_excludes_global_factors(self):
+        from django.core.management import call_command
+        from unittest.mock import patch
+        
+        # 1. Create articles in DB
+        # This one should be deleted (event_class is general macro)
+        macro_article = NewsArticle.objects.create(
+            title="General Macro Article",
+            link="http://example.com/macro",
+            source="Test",
+            published_date=timezone.now(),
+            event_class="Macro_Economy",
+            sector="General / Macro",
+            is_relevant=True,
+            summary="Summary"
+        )
+        
+        # This one should NOT be deleted (event_class is Global_Factors)
+        global_article = NewsArticle.objects.create(
+            title="Global Factors Article",
+            link="http://example.com/global",
+            source="Test",
+            published_date=timezone.now(),
+            event_class="Global_Factors",
+            sector="General / Macro",
+            is_relevant=True,
+            summary="Summary"
+        )
+        
+        # 2. Call command with RSS_FEEDS mocked to be empty so it finishes immediately
+        with patch('newsfeeds.management.commands.fetch_indian_economy_news.RSS_FEEDS', {}):
+            call_command('fetch_indian_economy_news')
+        
+        # 3. Assert macro_article is deleted and global_article is NOT deleted
+        self.assertFalse(NewsArticle.objects.filter(id=macro_article.id).exists())
+        self.assertTrue(NewsArticle.objects.filter(id=global_article.id).exists())
+
