@@ -2092,6 +2092,64 @@ sector_keywords = {
         "Festive Season Jewellery Sales", "Gold Import Bill", "Jewellery MSME",
         "Sustainable Jewellery", "Hallmark Scheme", "Jewellery E-commerce"
     ],
+    "Economy_India_Economy": [
+        "Indian Economy", "India GDP Growth", "Macroeconomic Indicators", "Economic Growth", 
+        "Inflation India", "RBI Monetary Policy", "Current Account Deficit", "Trade Balance", 
+        "Forex Reserves", "Indian Rupee", "Economic Survey", "Union Budget", "Fiscal Policy", 
+        "Monetary Policy", "GDP Forecast", "Economic Outlook", "India Macro Data", 
+        "Wholesale Inflation", "Retail Inflation", "Economic Indicators", "India Growth Story",
+        "Macroeconomic Stability", "External Sector", "Domestic Demand", "Capital Flows"
+    ],
+
+    "Fiscal_Deficit_Budget": [
+        "Fiscal Deficit", "Budget Deficit", "Fiscal Deficit Target", "Revenue Deficit", 
+        "Primary Deficit", "Fiscal Consolidation", "Budget Estimates", "Revised Estimates", 
+        "Actual Fiscal Deficit", "Government Borrowing", "Fiscal Slippage", "Budget Target", 
+        "Fiscal Responsibility", "FRBM Act", "Budget Deficit GDP", "Fiscal Gap", 
+        "Central Government Deficit", "Budget 2026", "Fiscal Target Miss", "Deficit Financing",
+        "Fiscal Discipline", "Budgetary Position", "Deficit as % of GDP", "Fiscal Roadmap"
+    ],
+
+    "Markets_Bonds": [
+        "Government Securities", "G-Sec", "Bond Yields", "10-Year G-Sec Yield", 
+        "Sovereign Bond", "Debt Market", "Bond Auction", "Government Borrowing", 
+        "Corporate Bond", "Bond Market", "Yield Curve", "RBI Bond Purchase", 
+        "Open Market Operations", "G-Sec Auction", "Bond Prices", "Interest Rates", 
+        "Fixed Income", "Treasury Bills", "State Development Loans", "SDLs", 
+        "Bond Market Reaction", "Fiscal Deficit Impact on Bonds", "Rupee Bond", "Debt Issuance"
+    ],
+
+    "Fiscal_Policy": [
+        "Fiscal Policy", "Expansionary Fiscal Policy", "Contractionary Fiscal Policy", 
+        "Fiscal Stimulus", "Tax Policy", "Government Spending Policy", "Fiscal Measures", 
+        "Budgetary Policy", "Fiscal Framework", "Fiscal Rules", "Counter Cyclical Fiscal Policy",
+        "Fiscal Prudence", "Fiscal Strategy", "Taxation Policy", "Public Expenditure Policy",
+        "Fiscal Multiplier", "Fiscal Impulse", "Fiscal Adjustment", "Fiscal Sustainability"
+    ],
+
+    "Government_Finances": [
+        "Government Finances", "Central Government Finances", "State Government Finances",
+        "Government Revenue", "Government Expenditure", "Tax Revenue", "Non-Tax Revenue",
+        "Capital Receipts", "Revenue Receipts", "Disinvestment Proceeds", "Government Borrowing",
+        "Public Debt Management", "Fiscal Position", "Budgetary Resources", "Ways and Means Advances",
+        "Government Cash Management", "Consolidated Fund of India", "Public Account of India"
+    ],
+
+    "Public_Finance": [
+        "Public Finance", "Public Finance Management", "Public Expenditure", "Public Revenue",
+        "Taxation", "Public Debt", "Fiscal Federalism", "Intergovernmental Transfers",
+        "Finance Commission", "Public Financial Management", "Government Budgeting",
+        "Public Sector Economics", "Fiscal Decentralization", "Public Goods", "Merit Goods",
+        "Subsidies", "Transfer Payments", "Public Investment", "Fiscal Transparency"
+    ],
+
+    "Government_Policies": [
+        "Government Policies", "Economic Policies", "Policy Reforms", "Structural Reforms",
+        "Policy Framework", "Policy Initiatives", "Government Schemes", "Policy Measures",
+        "Regulatory Policies", "Reform Measures", "Policy Announcements", "New Policy",
+        "Policy Changes", "Economic Reforms", "Policy Decisions", "Government Agenda",
+        "Policy Roadmap", "Reform Agenda", "Policy Interventions"
+    ],
 
     "Media_and_Entertainment": [
         "Media Sector", "Entertainment Industry", "OTT Platform", "Streaming Wars",
