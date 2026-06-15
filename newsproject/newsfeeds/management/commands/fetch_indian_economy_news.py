@@ -983,6 +983,80 @@ Examples:
         return "Global"
 
 
+def search_and_fetch_full_text(title: str, default_text: str) -> tuple[str, str]:
+    from ddgs import DDGS
+    import trafilatura
+    import requests
+    from bs4 import BeautifulSoup
+    import urllib.parse
+    
+    print(f"  Performing web search for: \"{title}\"")
+    results = []
+    links = []
+    try:
+        ddgs = DDGS()
+        # Retrieve top 10-15 results
+        results = list(ddgs.text(title, max_results=15))
+        links = [r['href'] for r in results if 'href' in r]
+    except Exception as e:
+        print(f"  Web search failed: {e}")
+        
+    if not links:
+        print("  No search results found. Falling back to default text.")
+        return default_text, "RSS Feed"
+
+    print(f"  Found {len(links)} search results. Attempting to fetch content sequentially for top 5...")
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    }
+    
+    # Try scraping the top 5 links
+    limit_scrape = min(len(links), 5)
+    for i in range(limit_scrape):
+        url = links[i]
+        print(f"  [{i+1}/{limit_scrape}] Fetching: {url}")
+        try:
+            # Try trafilatura first
+            downloaded = trafilatura.fetch_url(url)
+            if downloaded:
+                extracted = trafilatura.extract(downloaded)
+                # Ensure the text is long enough to be a real article body
+                if extracted and len(extracted.strip()) > 300:
+                    print(f"    -> SUCCESS: Scraped {len(extracted)} chars from result #{i+1}.")
+                    return extracted.strip(), url
+            
+            # Fallback to requests + BeautifulSoup if trafilatura fails
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                for s in soup(['script', 'style', 'nav', 'footer', 'header']):
+                    s.decompose()
+                text = soup.get_text(separator=' ', strip=True)
+                if len(text) > 300:
+                    print(f"    -> SUCCESS: Scraped {len(text)} chars from result #{i+1} via BeautifulSoup.")
+                    return text, url
+        except Exception as e:
+            print(f"    -> FAILED: {e}")
+            
+    # If top 5 scraping fails, use the descriptions from top 8-10 results (indices 7, 8, 9)
+    print("  Unable to scrape full text from top 5. Constructing context from search snippets (results 8-10)...")
+    snippets = []
+    # Try to take indices 7, 8, 9
+    target_results = results[7:10] if len(results) >= 8 else results
+    for r in target_results:
+        snippet_text = r.get('body', '').strip()
+        if snippet_text:
+            snippets.append(f"- {r.get('title', 'News Result')}: {snippet_text}")
+            
+    if snippets:
+        combined_snippets = "\n".join(snippets)
+        print(f"    -> SUCCESS: Created context from search snippets ({len(combined_snippets)} characters).")
+        return combined_snippets, "Web Search Snippets"
+        
+    print("  All top search results failed to scrape and no snippets available. Falling back to default text.")
+    return default_text, "RSS Feed"
+
+
 # ====================== MAIN COMMAND ======================
 class Command(BaseCommand):
     help = 'Fetch and analyze Indian Economy news from RSS feeds'
@@ -1480,20 +1554,28 @@ class Command(BaseCommand):
                 self.stdout.write(f"\n>>> [{idx}/{total_relevant}] Processing: \"{art['title']}\" from [{art['source']}]")
                 entry_log = art["entry_log"]
                 
-                # Fetch content directly from RSS description/title per user request
-                full_text = art.get("description", "") or art.get("title", "")
+                # Try fetching full text via web search
+                default_text = art.get("description", "") or art.get("title", "")
+                full_text, source_info = search_and_fetch_full_text(art["title"], default_text)
                 entry_log["scraped_content"] = full_text
                 
-                self.stdout.write(f"  Using RSS description ({len(full_text)} characters). Preview:")
-                if full_text:
-                    self.stdout.write(f"    \"{full_text[:300]}...\"")
+                if source_info != "RSS Feed":
+                    self.stdout.write(f"  Successfully fetched full text ({len(full_text)} characters) from web search result: {source_info}")
+                    step_detail = f"Scraped full content from search result: {source_info} ({len(full_text)} characters)."
+                    step_status = "PASSED"
                 else:
-                    self.stdout.write(f"    [Empty description. Using title as backup.]")
+                    self.stdout.write(f"  Using RSS description ({len(full_text)} characters). Preview:")
+                    if full_text:
+                        self.stdout.write(f"    \"{full_text[:300]}...\"")
+                    else:
+                        self.stdout.write(f"    [Empty description. Using title as backup.]")
+                    step_detail = f"Loaded description from RSS ({len(full_text)} characters)." if full_text else "No content returned."
+                    step_status = "PASSED" if full_text else "WARNING"
                     
                 entry_log["steps"].append({
-                    "step": "RSS Feed Reading",
-                    "status": "PASSED" if full_text else "WARNING",
-                    "detail": f"Loaded description from RSS ({len(full_text)} characters)." if full_text else "No content returned."
+                    "step": "Web Search & Fetch" if source_info != "RSS Feed" else "RSS Feed Reading",
+                    "status": step_status,
+                    "detail": step_detail
                 })
                 
                 # D. Multimedia Check
