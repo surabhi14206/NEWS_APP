@@ -1248,7 +1248,7 @@ class Command(BaseCommand):
                     title = article["title"]
                     description = article["description"]
                     try:
-                        relevance = is_relevant_to_india_economy(title, description, OLLAMA_MODEL)
+                        relevance = is_relevant_to_india_economy(title, description, OLLAMA_RELEVANCE_MODEL)
                     except Exception as e:
                         relevance = {"relevant": False, "reason": f"LLM error: {str(e)}", "matched_keywords": []}
                     return art_index, article, relevance
