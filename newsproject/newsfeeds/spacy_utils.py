@@ -15,31 +15,9 @@ except Exception:
     subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
     nlp = spacy.load("en_core_web_sm")
 
-# Common countries list for offline classification fallback
-COMMON_COUNTRIES = {
-    "india", "united states", "us", "usa", "china", "iran", "united kingdom", "uk", "great britain",
-    "germany", "france", "japan", "russia", "canada", "australia", "israel", "lebanon", "ukraine",
-    "pakistan", "bangladesh", "sri lanka", "nepal", "bhutan", "maldives", "singapore", "malaysia",
-    "indonesia", "thailand", "vietnam", "philippines", "south korea", "north korea", "saudi arabia",
-    "uae", "united arab emirates", "qatar", "egypt", "south africa", "brazil", "mexico", "argentina",
-    "italy", "spain", "netherlands", "switzerland", "sweden", "norway", "finland", "denmark",
-    "turkey", "iraq", "syria", "afghanistan", "taiwan", "hong kong", "new zealand"
-}
-
-# Major cities with country mappings for offline lookup
-CITY_COUNTRY_MAP = {
-    "mumbai": "India", "delhi": "India", "new delhi": "India", "bangalore": "India", "bengaluru": "India",
-    "kolkata": "India", "chennai": "India", "hyderabad": "India", "pune": "India", "ahmedabad": "India",
-    "bhopal": "India", "jabalpur": "India", "mumbai": "India", "gandhinagar": "India", "lucknow": "India",
-    "washington": "US", "new york": "US", "los angeles": "US", "chicago": "US", "san francisco": "US",
-    "houston": "US", "miami": "US", "boston": "US", "seattle": "US", "beijing": "China", "shanghai": "China",
-    "shenzhen": "China", "guangzhou": "China", "wuhan": "China", "tehran": "Iran", "isfahan": "Iran",
-    "shiraz": "Iran", "tabriz": "Iran", "london": "UK", "paris": "France", "berlin": "Germany",
-    "tokyo": "Japan", "moscow": "Russia", "toronto": "Canada", "sydney": "Australia", "tel aviv": "Israel",
-    "beirut": "Lebanon", "kyiv": "Ukraine"
-}
-
-# Indian States & major world states/provinces
+# Geopolitical data helper (geonamescache integration)
+COMMON_COUNTRIES = set()
+CITY_COUNTRY_MAP = {}
 COMMON_STATES = {
     "uttar pradesh", "maharashtra", "bihar", "west bengal", "madhya pradesh", "tamil nadu",
     "rajasthan", "karnataka", "gujarat", "andhra pradesh", "odisha", "telangana", "kerala",
@@ -48,6 +26,81 @@ COMMON_STATES = {
     "mizoram", "sikkim", "delhi", "california", "texas", "florida", "new york state", "ontario",
     "bavaria", "quebec"
 }
+
+try:
+    import geonamescache
+    gc = geonamescache.GeonamesCache()
+    geonames_countries = gc.get_countries()
+    geonames_cities = gc.get_cities()
+    
+    # 1. Load countries
+    for c_code, c_info in geonames_countries.items():
+        c_name = c_info['name']
+        COMMON_COUNTRIES.add(c_name.lower())
+        if 'iso' in c_info and c_info['iso']:
+            COMMON_COUNTRIES.add(c_info['iso'].lower())
+        if 'iso3' in c_info and c_info['iso3']:
+            COMMON_COUNTRIES.add(c_info['iso3'].lower())
+            
+    # Add common variants
+    COMMON_COUNTRIES.update({
+        "us", "usa", "united states", "united states of america",
+        "uk", "united kingdom", "great britain", "uae", "united arab emirates"
+    })
+    
+    # 2. Load cities (filtered by population >= 100,000 for accuracy)
+    # Store population alongside mappings to resolve naming conflicts (prefer larger population)
+    city_temp_resolution = {} # city_name_lower -> (country_name, population)
+    
+    for city_id, city_info in geonames_cities.items():
+        pop = city_info.get('population', 0)
+        if pop >= 100000:
+            city_name_lower = city_info['name'].lower()
+            c_code = city_info['countrycode']
+            c_info = geonames_countries.get(c_code)
+            if c_info:
+                country_name = c_info['name']
+                # If name conflict, select the city with the higher population
+                if city_name_lower in city_temp_resolution:
+                    existing_country, existing_pop = city_temp_resolution[city_name_lower]
+                    if pop > existing_pop:
+                        city_temp_resolution[city_name_lower] = (country_name, pop)
+                else:
+                    city_temp_resolution[city_name_lower] = (country_name, pop)
+                    
+    # Populate final map
+    for city_name_lower, (country_name, _) in city_temp_resolution.items():
+        CITY_COUNTRY_MAP[city_name_lower] = country_name
+        
+    # Ensure important overrides are present
+    CITY_COUNTRY_MAP.update({
+        "new delhi": "India",
+        "bengaluru": "India",
+        "bangalore": "India"
+    })
+    
+except Exception as e:
+    # Fallback to static mappings if geonamescache fails or is uninstalled
+    COMMON_COUNTRIES = {
+        "india", "united states", "us", "usa", "china", "iran", "united kingdom", "uk", "great britain",
+        "germany", "france", "japan", "russia", "canada", "australia", "israel", "lebanon", "ukraine",
+        "pakistan", "bangladesh", "sri lanka", "nepal", "bhutan", "maldives", "singapore", "malaysia",
+        "indonesia", "thailand", "vietnam", "philippines", "south korea", "north korea", "saudi arabia",
+        "uae", "united arab emirates", "qatar", "egypt", "south africa", "brazil", "mexico", "argentina",
+        "italy", "spain", "netherlands", "switzerland", "sweden", "norway", "finland", "denmark",
+        "turkey", "iraq", "syria", "afghanistan", "taiwan", "hong kong", "new zealand"
+    }
+    CITY_COUNTRY_MAP = {
+        "mumbai": "India", "delhi": "India", "new delhi": "India", "bangalore": "India", "bengaluru": "India",
+        "kolkata": "India", "chennai": "India", "hyderabad": "India", "pune": "India", "ahmedabad": "India",
+        "bhopal": "India", "jabalpur": "India", "lucknow": "India", "gandhinagar": "India",
+        "washington": "US", "new york": "US", "los angeles": "US", "chicago": "US", "san francisco": "US",
+        "houston": "US", "miami": "US", "boston": "US", "seattle": "US", "beijing": "China", "shanghai": "China",
+        "shenzhen": "China", "guangzhou": "China", "wuhan": "China", "tehran": "Iran", "isfahan": "Iran",
+        "shiraz": "Iran", "tabriz": "Iran", "london": "UK", "paris": "France", "berlin": "Germany",
+        "tokyo": "Japan", "moscow": "Russia", "toronto": "Canada", "sydney": "Australia", "tel aviv": "Israel",
+        "beirut": "Lebanon", "kyiv": "Ukraine"
+    }
 
 def clean_geotext(text: str) -> str:
     if not text:
