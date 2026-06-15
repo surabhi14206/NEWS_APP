@@ -998,7 +998,7 @@ class Command(BaseCommand):
         self.stdout.write("Starting news analysis for Indian Economy...\n")
         
         # Check if local Ollama is running at startup to verify service status
-        global OLLAMA_AVAILABLE
+        global OLLAMA_AVAILABLE, OLLAMA_MODEL
         try:
             r = requests.get("http://localhost:11434/", timeout=0.5)
             OLLAMA_AVAILABLE = (r.status_code == 200)
@@ -1112,7 +1112,6 @@ class Command(BaseCommand):
 
         # Now, run the processing pipeline for each model config
         for config in configs:
-            global OLLAMA_MODEL
             OLLAMA_MODEL = config["model"]
             log_file = config["log_file"]
 
