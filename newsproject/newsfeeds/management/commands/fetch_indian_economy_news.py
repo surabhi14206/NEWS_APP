@@ -21,8 +21,10 @@ from newsfeeds.management.commands.ollama_ch_maps import OllamaChannelMapper
 channel_mapper = ChannelMapper()
 ollama_channel_mapper = OllamaChannelMapper()
 # ====================== CONFIG ======================
+from django.conf import settings
 from newsfeeds.spacy_utils import extract_locations_hybrid
-OLLAMA_MODEL = "gemma3:4b"
+OLLAMA_MODEL = getattr(settings, 'OLLAMA_MODEL', 'gemma3:4b')
+OLLAMA_RELEVANCE_MODEL = getattr(settings, 'OLLAMA_RELEVANCE_MODEL', 'news_filter_custom:latest')
 OLLAMA_AVAILABLE = True
 
 HEADERS = {
@@ -759,14 +761,54 @@ Return ONLY a valid JSON object in this format:
         return {"is_multimedia": False, "reason": f"Error: {e}"}
 
 
-def is_relevant_to_india_economy(headline: str, description: str = "", model_name: str = OLLAMA_MODEL) -> dict:
+def is_relevant_to_india_economy(headline: str, description: str = "", model_name: str = OLLAMA_RELEVANCE_MODEL) -> dict:
     if not OLLAMA_AVAILABLE:
         return {
             "relevant": True,
             "reason": "Offline fast fallback: passed Keyword Pre-Filter (Ollama is offline)",
             "matched_keywords": []
         }
-    prompt = f"""You are an expert financial and macroeconomic analyst.
+        
+    if "news_filter_custom" in model_name:
+        prompt = f"""You are an expert macroeconomic & financial news analyst for an India-focused dashboard.
+
+Classify news articles as "relevant" or "irrelevant" and provide detailed analysis.
+Always respond with **ONLY valid JSON** — no extra text.
+
+JSON Format:
+{{
+  "classification": "relevant" | "irrelevant",
+  "importance_score": 1-10,
+  "sentiment": "Positive" | "Negative" | "Neutral",
+  "reason": "Brief reason only if irrelevant, otherwise empty string",
+  "key_impact": "One sentence describing macroeconomic or financial impact on India/markets",
+  "key_entities": ["RBI", "IT Sector", "INR", ...]
+}}
+
+### Classification Rules:
+- **Relevant**: Impacts economy, markets, RBI/Fed policy, trade, currency (INR), inflation, key sectors (IT, Banking, Oil/Energy, Metals, Textiles, Pharma, Auto).
+- **Irrelevant**: Local accidents, crime, sports, entertainment, weather, non-economic politics, military uniform changes/dress codes, administrative changes, or national symbols.
+
+### Few-Shot Examples:
+
+Article:
+Title: Indian Army drops colonial-era dress traditions, introduces bandi jackets in new uniform code
+Description: The regulations permit women officers to wear sober-coloured sarees, or kurta-salwar and ankle-length straight pants with a dupatta.
+Analysis:
+{{"classification": "irrelevant", "importance_score": 1, "sentiment": "Neutral", "reason": "Military dress code update with no macroeconomic transmission or fiscal impact.", "key_impact": "", "key_entities": []}}
+
+Article:
+Title: Stocks Pressured by AI Selloff and Jump in Oil Prices
+Description: Global stocks pressured by a tech selloff and rising crude oil prices.
+Analysis:
+{{"classification": "relevant", "importance_score": 8, "sentiment": "Negative", "reason": "", "key_impact": "Rising oil prices will widen India's trade deficit and fuel imported inflation.", "key_entities": ["Oil Prices", "Stock Market", "INR"]}}
+
+Article:
+Title: {headline}
+Description: {description}
+Analysis:"""
+    else:
+        prompt = f"""You are an expert financial and macroeconomic analyst.
 Your task is to filter news articles strictly for direct, real, and substantial impact on the Indian economy, financial markets, central banking (RBI), corporate business, or international trade.
 
 Headline: {headline}
@@ -793,14 +835,27 @@ Return ONLY a valid JSON object in this exact format:
     try:
         response = ollama.chat(
             model=model_name,
-            messages=[{'role': 'user', 'content': prompt}]
+            messages=[{'role': 'user', 'content': prompt}],
+            options={'temperature': 0.0},
+            format='json'
         )
         content = response['message']['content']
 
         import re
         json_match = re.search(r'\{.*?\}', content, re.DOTALL)
         if json_match:
-            return json.loads(json_match.group())
+            res_dict = json.loads(json_match.group())
+            # Normalize keys for the custom model classification schema
+            if "classification" in res_dict:
+                res_dict["relevant"] = (res_dict["classification"].strip().lower() == "relevant")
+            if "relevant" not in res_dict:
+                res_dict["relevant"] = False
+            # Map key_entities to matched_keywords so they render as blue tag boxes in the frontend
+            if "key_entities" in res_dict and res_dict["key_entities"]:
+                res_dict["matched_keywords"] = res_dict["key_entities"]
+            if "matched_keywords" not in res_dict:
+                res_dict["matched_keywords"] = []
+            return res_dict
         else:
             return {"relevant": False, "reason": "JSON parse failed", "matched_keywords": []}
             
@@ -981,8 +1036,6 @@ Examples:
         return origin_result or "Global"
     except Exception:
         return "Global"
-
-
 def search_and_fetch_full_text(title: str, default_text: str) -> tuple[str, str]:
     from ddgs import DDGS
     import trafilatura
@@ -1071,7 +1124,7 @@ class Command(BaseCommand):
                 pass
         self.stdout.write("Starting news analysis for Indian Economy...\n")
         
-        # Check if local Ollama is running at startup to verify service status
+        # Check and auto-start local Ollama if not running
         global OLLAMA_AVAILABLE, OLLAMA_MODEL
         try:
             r = requests.get("http://localhost:11434/", timeout=0.5)
@@ -1577,6 +1630,42 @@ class Command(BaseCommand):
                     "status": step_status,
                     "detail": step_detail
                 })
+                
+                # Second Relevance Check (on full fetched text)
+                self.stdout.write(f"  Running second relevance check on full text context...")
+                try:
+                    # Pass the first 4000 characters of full_text to avoid exceeding typical context/latency issues
+                    second_relevance = is_relevant_to_india_economy(art["title"], full_text[:4000], OLLAMA_RELEVANCE_MODEL)
+                except Exception as e:
+                    second_relevance = {
+                        "relevant": True,
+                        "reason": f"Second relevance check error: {str(e)}",
+                        "matched_keywords": []
+                    }
+                
+                if not second_relevance.get("relevant", False):
+                    self.stdout.write(f"  -> REJECTED by Second Relevance Check: {second_relevance.get('reason', '')}")
+                    entry_log["status"] = "skipped_not_relevant"
+                    entry_log["skip_reason"] = f"Second relevance check marked irrelevant: {second_relevance.get('reason', '')}"
+                    entry_log["steps"].append({
+                        "step": "Second Relevance Check",
+                        "status": "REJECTED",
+                        "detail": f"Reason: {second_relevance.get('reason', '')}"
+                    })
+                    rejected_articles.append(entry_log)
+                    all_articles_log.append(entry_log)
+                    save_live_outputs_stream()
+                    continue
+                else:
+                    self.stdout.write(f"  -> PASSED Second Relevance Check: {second_relevance.get('reason', 'Economic relevance confirmed.')}")
+                    entry_log["steps"].append({
+                        "step": "Second Relevance Check",
+                        "status": "PASSED",
+                        "detail": f"Confirmed Indian economy relevance. Reason: {second_relevance.get('reason', '') or second_relevance.get('key_impact', '')}"
+                    })
+                    # Update relevance info with the second check's results
+                    entry_log["analysis"]["relevance"] = second_relevance
+                    entry_log["insights"]["relevance"] = second_relevance
                 
                 # D. Multimedia Check
                 self.stdout.write(f"  Checking multimedia format...")
