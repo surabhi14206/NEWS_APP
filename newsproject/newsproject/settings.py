@@ -42,6 +42,7 @@ INSTALLED_APPS = [
 
 # Ollama & other settings
 OLLAMA_MODEL = "gemma3:4b"
+OLLAMA_RELEVANCE_MODEL = "news_filter_custom:latest"
 
 
 MIDDLEWARE = [
