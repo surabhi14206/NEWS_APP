@@ -1006,7 +1006,38 @@ class Command(BaseCommand):
             OLLAMA_AVAILABLE = False
             
         if not OLLAMA_AVAILABLE:
-            self.stderr.write("CRITICAL ERROR: local Ollama is not running! Please start the Ollama service before running news fetch.")
+            self.stdout.write("Local Ollama is offline. Attempting to start service automatically...")
+            try:
+                import subprocess
+                import time
+                subprocess.Popen("ollama serve", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                for _ in range(15):
+                    time.sleep(1)
+                    try:
+                        r = requests.get("http://localhost:11434/", timeout=0.5)
+                        if r.status_code == 200:
+                            OLLAMA_AVAILABLE = True
+                            break
+                    except Exception:
+                        pass
+            except Exception as e:
+                self.stderr.write(f"Auto-start failed: {e}")
+                
+        if OLLAMA_AVAILABLE:
+            # Pre-warm models synchronously to ensure they are loaded
+            self.stdout.write("Pre-warming Ollama models...")
+            try:
+                requests.post("http://localhost:11434/api/generate", json={"model": OLLAMA_RELEVANCE_MODEL}, timeout=60)
+                requests.post("http://localhost:11434/api/generate", json={"model": OLLAMA_MODEL}, timeout=60)
+            except Exception:
+                try:
+                    import subprocess
+                    subprocess.run(f"ollama run {OLLAMA_RELEVANCE_MODEL} \"\"", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+                    subprocess.run(f"ollama run {OLLAMA_MODEL} \"\"", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+                except Exception:
+                    pass
+        else:
+            self.stderr.write("CRITICAL ERROR: local Ollama is not running and could not be started automatically! Please start the Ollama service before running news fetch.")
             import sys
             sys.exit(1)
         
