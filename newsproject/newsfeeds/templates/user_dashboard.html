@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Indian Economy News - Reader Feed</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #f4f5f8;
+            --bg-sidebar: #ffffff;
+            --bg-card: #ffffff;
+            --bg-label: #e6e9ee;
+            --bg-value: #f9fbfd;
+            --text-main: #1d1d1f;
+            --text-muted: #6e6e73;
+            --border-color: #d2d6df;
+            --brand-color: #0066cc;
+            --section-title-bg: #dce4f0;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            background: var(--bg-body); 
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout */
+        .sidebar {
+            width: 350px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px 40px;
+            overflow-y: auto;
+            background: var(--bg-body);
+        }
+
+        /* Sidebar Header */
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .fetch-btn {
+            background: var(--brand-color);
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        .fetch-btn:hover {
+            background: #005bb5;
+        }
+
+        /* Article List */
+        .article-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .article-card {
+            position: relative;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #fff;
+        }
+        
+        .scraping-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #2563eb;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+        
+        .channel-source-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            text-transform: lowercase;
+            vertical-align: middle;
+            line-height: 1.2;
+            margin-left: 6px;
+        }
+        
+        .badge-channel-map {
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+        
+        .badge-ollama {
+            background: #f3e8ff;
+            color: #6b21a8;
+            border: 1px solid #e9d5ff;
+        }
+
+        .article-card:hover {
+            background: #f8f9fa;
+            border-color: var(--border-color);
+        }
+
+        .article-card.active {
+            background: #eef5ff;
+            border-color: #b8d4fe;
+        }
+
+        .card-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-keywords {
+            font-size: 0.75rem;
+            color: #0066cc;
+            background: #eef5ff;
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+
+        /* Dashboard Template */
+        .template-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            display: none; /* Hidden until an article is clicked */
+        }
+
+        .template-title {
+            padding: 20px 25px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            color: #111827;
+        }
+
+        .grid-form {
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .form-group {
+            display: flex;
+            flex: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .form-group.full {
+            flex: 100%;
+        }
+
+        .label {
+            background: var(--bg-label);
+            padding: 10px 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4b5563;
+            width: 120px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .value {
+            background: var(--bg-value);
+            padding: 10px 15px;
+            font-size: 0.9rem;
+            color: #1f2937;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            line-height: 1.5;
+        }
+
+        .value a {
+            color: var(--brand-color);
+            text-decoration: none;
+        }
+
+        .value a:hover {
+            text-decoration: underline;
+        }
+
+        .value p {
+            margin: 0;
+            padding: 0;
+        }
+        
+        .value p + p {
+            margin-top: 8px;
+        }
+
+        .label.tall {
+            align-items: flex-start;
+        }
+        
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.2;
+        }
+
+        .badge-positive {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+        .badge-negative {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+        .badge-neutral {
+            background-color: #f3f4f6;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+
+        /* Info Icon and Tooltip */
+        .info-icon-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .info-icon {
+            opacity: 0.6;
+            color: #6e6e73;
+            transition: opacity 0.2s, color 0.2s;
+        }
+        
+        .info-icon-container:hover .info-icon {
+            opacity: 1;
+            color: #0066cc;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 250px;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px 12px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            right: 0;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            font-weight: normal;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .info-icon-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            right: 12px;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>🇮🇳 News Feed</h1>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <a href="{% url 'logout' %}" class="fetch-btn" style="background: #4b5563; border: none;" onmouseover="this.style.background='#374151'" onmouseout="this.style.background='#4b5563'">Logout</a>
+            </div>
+        </div>
+        
+        <!-- SIDEBAR CONTROLS (SEARCH & FILTERS) -->
+        <div class="sidebar-controls" style="padding: 12px 15px; border-bottom: 1px solid var(--border-color); background: #f8f9fa; display: flex; flex-direction: column; gap: 8px;">
+            <div style="position: relative; display: flex; align-items: center;">
+                <input type="text" id="sidebar-search" placeholder="Search news by headline, source..." style="width: 100%; padding: 7px 30px 7px 12px; font-size: 0.82rem; border: 1px solid var(--border-color); border-radius: 6px; outline: none; box-sizing: border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--brand-color)'" onblur="this.style.borderColor='var(--border-color)'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 10px; width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; opacity: 0.7;">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <select id="filter-sector" style="flex: 1.2; padding: 5px 8px; font-size: 0.78rem; border: 1px solid var(--border-color); border-radius: 6px; background: white; outline: none; color: #4b5563; max-width: 60%; cursor: pointer;">
+                    <option value="">All Sectors</option>
+                </select>
+                <select id="filter-direction" style="flex: 0.8; padding: 5px 8px; font-size: 0.78rem; border: 1px solid var(--border-color); border-radius: 6px; background: white; outline: none; color: #4b5563; max-width: 40%; cursor: pointer;">
+                    <option value="">Sentiment</option>
+                    <option value="positive">Positive</option>
+                    <option value="negative">Negative</option>
+                    <option value="neutral">Neutral</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="article-list">
+            {% for article in articles %}
+            <div class="article-card" 
+                 onclick="showArticleDetails(this)"
+                 data-id="EVT-{{ article.id|default:'000' }}"
+                 data-date="{{ article.published_date|date:'d M Y' }}"
+                 data-source="{{ article.source }}"
+                 data-title="{{ article.title }}"
+                 data-summary="{{ article.summary }}"
+                 data-link="{{ article.link }}"
+                 data-keywords="{{ article.matched_keywords|join:', ' }}"
+                 data-direction="{{ article.direction }}"
+                 data-direction-reason="{{ article.direction_reason }}"
+                 data-impact-score="{{ article.impact_score }}"
+                 data-event-class="{{ article.event_class }}"
+                 data-sector="{{ article.sector }}"
+                 data-sub-type="{{ article.sub_type }}"
+                 data-channel="{{ article.channel }}"
+                 data-origin="{{ article.origin|default:'Global' }}"
+                 data-is-scraped="{{ article.is_scraped|yesno:'true,false' }}"
+                 data-is-channel-mapped="{{ article.is_channel_mapped|yesno:'true,false' }}">
+                
+                <div class="card-meta">
+                    {{ article.source }} • {{ article.published_date|date:"d M y" }}
+                    {% if article.is_scraped %}
+                    <span class="scraping-badge" title="Scraped with Selenium">s</span>
+                    {% endif %}
+                </div>
+                <h3 class="card-title">{{ article.title }}</h3>
+                {% if article.matched_keywords %}
+                <span class="card-keywords">{{ article.matched_keywords.0 }}</span>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div style="padding: 20px; text-align: center; color: #6e6e73; font-size: 0.9rem;">
+                No articles found.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- RIGHT MAIN CONTENT -->
+    <div class="main-content">
+        
+        <!-- Empty State (Shows initially) -->
+        <div id="empty-state" class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            <h2>Select an article</h2>
+            <p>Click on any news article from the left sidebar to view its Event Record Template.</p>
+        </div>
+
+        <!-- Dashboard Template (Shows when article clicked) -->
+        <div id="template-view" class="template-wrapper">
+            <div class="template-title" id="display-title">[Headline]</div>
+            
+            <div class="grid-form">
+                <!-- Row 1 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="label">Date</div>
+                        <div class="value" id="val-date">-</div>
+                    </div>
+                    <div class="form-group">
+                        <div class="label">Source</div>
+                        <div class="value" id="val-source">-</div>
+                    </div>
+                </div>
+
+                <!-- Row 2 -->
+                <div class="form-row">
+                    <div class="form-group full">
+                        <div class="label">Headline</div>
+                        <div class="value"><a href="#" id="val-headline" target="_blank">-</a></div>
+                    </div>
+                </div>
+
+                <!-- Row 3 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="label">Event class</div>
+                        <div class="value" id="val-event-class">Economic Impact</div>
+                    </div>
+                    <div class="form-group">
+                        <div class="label">Sub-type</div>
+                        <div class="value" id="val-sub-type">General News</div>
+                    </div>
+                </div>
+
+                <!-- Row 4 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="label">City/Country</div>
+                        <div class="value" id="val-origin">India / Global</div>
+                    </div>
+                    <div class="form-group" style="overflow: visible;">
+                        <div class="label">Direction</div>
+                        <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; border-top-right-radius: 5px; border-bottom-right-radius: 5px; overflow: visible;">
+                            <div id="val-direction-badge">
+                                <span class="badge-neutral">Pending</span>
+                            </div>
+                            
+                            <!-- Hover Info Icon for Sentiment Reason -->
+                            <div class="info-icon-container" id="val-direction-info" style="display: none;">
+                                <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <div class="tooltip-text" id="val-direction-tooltip">No details available.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 5 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="label">Sector</div>
+                        <div class="value" id="val-sector">Macroeconomy</div>
+                    </div>
+                    <div class="form-group">
+                        <div class="label">Channel</div>
+                        <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                            <span id="val-channel">News & Media</span>
+                            <span id="val-channel-badge" class="channel-source-badge" style="display: none;">c</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 6 -->
+                <div class="form-row">
+                    <div class="form-group full">
+                        <div class="label tall">Insight</div>
+                        <div class="value" id="val-context">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showArticleDetails(card) {
+            // Remove active class from all cards
+            document.querySelectorAll('.article-card').forEach(c => c.classList.remove('active'));
+            // Add active class to clicked card
+            card.classList.add('active');
+
+            // Hide empty state, show template
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('template-view').style.display = 'block';
+
+            // Get data from data attributes
+            const id = card.getAttribute('data-id');
+            const date = card.getAttribute('data-date');
+            const source = card.getAttribute('data-source');
+            const title = card.getAttribute('data-title');
+            const summary = card.getAttribute('data-summary');
+            const link = card.getAttribute('data-link');
+            const keywords = card.getAttribute('data-keywords');
+            const direction = card.getAttribute('data-direction');
+            const directionReason = card.getAttribute('data-direction-reason');
+            const impactScore = card.getAttribute('data-impact-score');
+            const eventClass = card.getAttribute('data-event-class');
+            const sector = card.getAttribute('data-sector');
+            const subType = card.getAttribute('data-sub-type');
+            const channel = card.getAttribute('data-channel');
+            const origin = card.getAttribute('data-origin');
+
+            // Update UI elements
+            document.getElementById('display-title').textContent = title;
+            document.getElementById('val-origin').textContent = origin || "Global";
+            document.getElementById('val-date').textContent = date;
+            document.getElementById('val-source').textContent = source;
+            document.getElementById('val-event-class').textContent = eventClass ? eventClass.replace(/^L1[_\s\-]+/i, '').replace(/_/g, ' ') : "Economic Impact";
+            document.getElementById('val-sector').textContent = sector ? sector.replace(/_/g, ' ') : "General / Macro";
+            document.getElementById('val-sub-type').textContent = subType ? subType.replace(/^L2[_\s\-]+/i, '').replace(/_/g, ' ') : "General News";
+            document.getElementById('val-channel').textContent = channel || "News & Media";
+            
+            const isChannelMapped = card.getAttribute('data-is-channel-mapped') === 'true';
+            const channelBadge = document.getElementById('val-channel-badge');
+            if (channelBadge) {
+                channelBadge.textContent = isChannelMapped ? 'c' : 'o';
+                channelBadge.className = 'channel-source-badge ' + (isChannelMapped ? 'badge-channel-map' : 'badge-ollama');
+                channelBadge.title = isChannelMapped ? 'Mapped via Channel Rules' : 'Classified via Ollama';
+                channelBadge.style.display = 'inline-block';
+            }
+            
+            const headlineEl = document.getElementById('val-headline');
+            headlineEl.textContent = title;
+            headlineEl.href = link;
+
+            document.getElementById('val-context').innerHTML = summary ? marked.parse(summary) : "No context available.";
+
+            // Map Direction Badge & Reason
+            let badgeClass = 'badge-neutral';
+            let formattedDir = 'Neutral';
+            let scoreStr = '';
+
+            if (direction) {
+                const dirLower = direction.toLowerCase();
+                if (dirLower === 'positive') {
+                    badgeClass = 'badge-positive';
+                    formattedDir = 'Positive';
+                } else if (dirLower === 'negative') {
+                    badgeClass = 'badge-negative';
+                    formattedDir = 'Negative';
+                } else if (dirLower === 'neutral') {
+                    badgeClass = 'badge-neutral';
+                    formattedDir = 'Neutral';
+                }
+            }
+
+            if (impactScore && impactScore !== '0') {
+                const valInt = parseInt(impactScore);
+                scoreStr = valInt >= 0 ? ` (+${valInt})` : ` (${valInt})`;
+            }
+
+            const badgeContainer = document.getElementById('val-direction-badge');
+            badgeContainer.innerHTML = `<span class="${badgeClass}">${formattedDir}</span>`;
+
+            // Setup Sentiment Tooltip Reason
+            const infoContainer = document.getElementById('val-direction-info');
+            const tooltipText = document.getElementById('val-direction-tooltip');
+            if (directionReason && directionReason.trim() !== "") {
+                tooltipText.textContent = directionReason;
+                infoContainer.style.display = 'inline-block';
+            } else {
+                infoContainer.style.display = 'none';
+            }
+        }
+
+        // Setup filter logic
+        document.addEventListener("DOMContentLoaded", function() {
+            const searchInput = document.getElementById('sidebar-search');
+            const sectorFilter = document.getElementById('filter-sector');
+            const directionFilter = document.getElementById('filter-direction');
+            const cards = document.querySelectorAll('.article-card');
+
+            // Collect and build Sector options dynamically
+            const sectors = new Set();
+            cards.forEach(card => {
+                const s = card.getAttribute('data-sector');
+                if (s && s.trim() !== '') {
+                    sectors.add(s);
+                }
+            });
+
+            // Populate sector dropdown
+            const sortedSectors = Array.from(sectors).sort();
+            sortedSectors.forEach(sec => {
+                const opt = document.createElement('option');
+                opt.value = sec;
+                opt.textContent = sec.replace(/_/g, ' ');
+                sectorFilter.appendChild(opt);
+            });
+
+            function filterSidebarArticles() {
+                const query = searchInput.value.toLowerCase().trim();
+                const sectorVal = sectorFilter.value;
+                const dirVal = directionFilter.value;
+
+                cards.forEach(card => {
+                    const title = card.getAttribute('data-title').toLowerCase();
+                    const source = card.getAttribute('data-source').toLowerCase();
+                    const sector = card.getAttribute('data-sector');
+                    const direction = card.getAttribute('data-direction').toLowerCase();
+
+                    const queryMatch = !query || title.includes(query) || source.includes(query);
+                    const sectorMatch = !sectorVal || sector === sectorVal;
+                    const directionMatch = !dirVal || direction === dirVal;
+
+                    if (queryMatch && sectorMatch && directionMatch) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+
+            if (searchInput) searchInput.addEventListener('input', filterSidebarArticles);
+            if (sectorFilter) sectorFilter.addEventListener('change', filterSidebarArticles);
+            if (directionFilter) directionFilter.addEventListener('change', filterSidebarArticles);
+        });
+    </script>
+</body>
+</html>

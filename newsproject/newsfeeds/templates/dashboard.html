@@ -691,6 +691,205 @@
             line-height: 1.4;
         }
 
+        /* Pipeline Logs styles */
+        .logs-fab {
+            position: fixed;
+            bottom: 84px; /* Placed above the manual analysis FAB */
+            right: 24px;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #1f2937; /* Dark slate */
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(31, 41, 55, 0.3);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            z-index: 999;
+            border: none;
+            outline: none;
+        }
+
+        .logs-fab:hover {
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 8px 25px rgba(31, 41, 55, 0.4);
+            background: #111827;
+        }
+
+        /* Modal specific log table and badges */
+        .logs-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 1002; /* Ensure it is on top of other modals */
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            backdrop-filter: blur(4px);
+        }
+
+        .logs-modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 1100px;
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .logs-modal-header {
+            padding: 15px 25px;
+            background: #1f2937;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logs-modal-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .logs-modal-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            background: #f4f5f8;
+        }
+
+        .logs-sidebar {
+            width: 60%;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            background: white;
+            height: 100%;
+        }
+
+        .logs-detail-panel {
+            width: 40%;
+            background: #f9fbfd;
+            padding: 20px;
+            overflow-y: auto;
+            box-sizing: border-box;
+            height: 100%;
+        }
+
+        .logs-search-bar {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            background: #f8f9fa;
+            display: flex;
+            gap: 10px;
+        }
+
+        .logs-table-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .logs-table th {
+            background: #f3f4f6;
+            color: #4b5563;
+            text-align: left;
+            padding: 10px 15px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .logs-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .logs-table tr:hover td {
+            background: #f9fafb;
+        }
+
+        .logs-table tr.active td {
+            background: #eef5ff;
+        }
+
+        .log-badge-passed {
+            background-color: #d1fae5;
+            color: #065f46;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .log-badge-rejected {
+            background-color: #fee2e2;
+            color: #991b1b;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Metric card styling */
+        .logs-metric-container {
+            display: flex;
+            gap: 15px;
+            padding: 15px 25px;
+            background: #f3f4f6;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logs-metric-card {
+            flex: 1;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .logs-metric-card .metric-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .logs-metric-card .metric-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #111827;
+        }
+
+    </style>
+
     </style>
 </head>
 <body>
@@ -699,7 +898,10 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h1>🇮🇳 News Feed</h1>
-            <a href="{% url 'fetch_news' %}" class="fetch-btn">Refresh</a>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <a href="{% url 'fetch_news' %}" class="fetch-btn">Refresh</a>
+                <a href="{% url 'logout' %}" class="fetch-btn" style="background: #dc2626; border: none;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">Logout</a>
+            </div>
         </div>
         
         <!-- SIDEBAR CONTROLS (SEARCH & FILTERS) -->
@@ -788,9 +990,16 @@
         </div>
 
         <!-- Dashboard Template (Shows when article clicked) -->
-        <div id="template-view" class="template-wrapper">
+        <div id="template-view" class="template-wrapper" style="position: relative; overflow: visible;">
             
-            <div class="template-title" id="display-title">[Headline]</div>
+            <div class="template-title" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 25px; border-bottom: 1px solid var(--border-color); background: white; gap: 20px;">
+                <div id="display-title" style="font-size: 1.25rem; font-weight: 600; color: #111827; flex: 1;">[Headline]</div>
+                <button id="pipeline-steps-toggle-btn" onclick="togglePipelineTimeline()" title="View Scraper Pipeline Verification Steps" style="background: none; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--brand-color); transition: all 0.2s; outline: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                </button>
+            </div>
             
             <div class="grid-form">
                 <!-- Row 1 -->
@@ -874,14 +1083,81 @@
                         <div class="value" id="val-context">-</div>
                     </div>
                 </div>
+
+                <!-- Pipeline verification popover is handled in the template title header corner -->
             </div>
 
-
-
+            <!-- Collapsible steps timeline panel on the right of the card -->
+            <div id="pipeline-steps-timeline" style="display: none; position: absolute; left: calc(100% + 20px); top: 0; width: 450px; max-height: calc(100vh - 100px); overflow-y: auto; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 20px; z-index: 1000;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                    <h4 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #374151;">Scraper Pipeline Verification</h4>
+                    <button onclick="togglePipelineTimeline()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #9ca3af; line-height: 1; padding: 0;">&times;</button>
+                </div>
+                <div id="pipeline-loading" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 10px 0;">
+                    Loading pipeline logs...
+                </div>
+                <div id="pipeline-steps-list" style="display: flex; flex-direction: column; gap: 15px; position: relative;">
+                    <!-- Timeline vertical line -->
+                    <div style="position: absolute; left: 9px; top: 5px; bottom: 5px; width: 2px; background: #e5e7eb; z-index: 1;"></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        function linkify(text) {
+            if (!text) return "";
+            const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+            return text.replace(urlPattern, '<a href="$1" target="_blank" style="color: #2563eb; text-decoration: underline; word-break: break-all;">$1</a>');
+        }
+
+        function formatTaxonomyDetail(detail, log) {
+            if (!detail) return "";
+            const parts = {};
+            const regex = /(L1|L2|Sector|Channel|Keyword|Reason):\s*([^,]+)(?=,|$)/gi;
+            let match;
+            while ((match = regex.exec(detail)) !== null) {
+                parts[match[1].toUpperCase()] = match[2].trim();
+            }
+            if (Object.keys(parts).length === 0) {
+                return linkify(detail);
+            }
+            const l1 = parts['L1'] || '';
+            const l2 = parts['L2'] || '';
+            
+            // Get DOM fallbacks for sector and channel
+            let fallbackSector = 'General / Macro';
+            const valSectorEl = document.getElementById('val-sector');
+            const savedSectorEl = document.getElementById('saved-val-sector');
+            if (valSectorEl && valSectorEl.textContent && valSectorEl.textContent.trim() !== '-' && valSectorEl.textContent.trim() !== '') {
+                fallbackSector = valSectorEl.textContent.trim();
+            } else if (savedSectorEl && savedSectorEl.textContent && savedSectorEl.textContent.trim() !== '-' && savedSectorEl.textContent.trim() !== '') {
+                fallbackSector = savedSectorEl.textContent.trim();
+            }
+            
+            let fallbackChannel = '';
+            const valChannelEl = document.getElementById('val-channel');
+            const savedChannelEl = document.getElementById('saved-val-channel');
+            if (valChannelEl && valChannelEl.textContent && valChannelEl.textContent.trim() !== '-' && valChannelEl.textContent.trim() !== '') {
+                fallbackChannel = valChannelEl.textContent.trim();
+            } else if (savedChannelEl && savedChannelEl.textContent && savedChannelEl.textContent.trim() !== '-' && savedChannelEl.textContent.trim() !== '') {
+                fallbackChannel = savedChannelEl.textContent.trim();
+            }
+            
+            const sectorVal = parts['SECTOR'] || log?.insights?.taxonomy?.sector || log?.analysis?.taxonomy?.sector || log?.sector || fallbackSector;
+            const channelVal = parts['CHANNEL'] || parts['KEYWORD'] || log?.insights?.taxonomy?.channel || log?.analysis?.taxonomy?.channel || log?.channel || fallbackChannel;
+            const reasonVal = parts['REASON'] || log?.insights?.taxonomy?.reason || log?.analysis?.taxonomy?.reason || '';
+            
+            let html = `<div style="display: flex; flex-direction: column; gap: 4px; margin-top: 5px;">`;
+            if (l1) html += `<div><strong>Event Class (L1):</strong> ${l1.replace(/_/g, ' ')}</div>`;
+            if (l2) html += `<div><strong>Sub-type (L2):</strong> ${l2.replace(/_/g, ' ')}</div>`;
+            if (sectorVal) html += `<div><strong>Sector:</strong> ${sectorVal.replace(/_/g, ' ')}</div>`;
+            if (channelVal) html += `<div><strong>Channel:</strong> ${linkify(channelVal.replace(/_/g, ' '))}</div>`;
+            if (reasonVal) html += `<div style="border-top: 1px dashed #e5e7eb; padding-top: 4px; margin-top: 4px; font-style: italic; color: #374151;"><strong>Reason:</strong> ${linkify(reasonVal)}</div>`;
+            html += `</div>`;
+            return html;
+        }
+
         function showArticleDetails(card) {
             // Remove active class from all cards
             document.querySelectorAll('.article-card').forEach(c => c.classList.remove('active'));
@@ -983,6 +1259,18 @@
             // Set Sector directly from database field
             const sectorEl = document.getElementById('val-sector');
             sectorEl.textContent = sector ? sector.replace(/_/g, ' ') : "General / Macro";
+            
+            // Hide pipeline timeline dropdown by default
+            const timelineEl = document.getElementById('pipeline-steps-timeline');
+            if (timelineEl) timelineEl.style.display = 'none';
+            const btnEl = document.getElementById('pipeline-steps-toggle-btn');
+            if (btnEl) {
+                btnEl.style.background = 'none';
+                btnEl.style.borderColor = 'var(--border-color)';
+            }
+            
+            // Render pipeline verification steps
+            renderPipelineStepsForArticle(title);
         }
 
         let selectedSavedArticleId = null;
@@ -1872,6 +2160,615 @@
                 showError(error.message);
             });
         });
+
+        // Global and Individual pipeline logs logic
+        let globalPipelineLogs = [];
+        let logsSortDirection = 'desc'; // default to descending (latest first)
+        
+        function clearLogsDateFilter() {
+            const startInput = document.getElementById('logs-start-date');
+            const endInput = document.getElementById('logs-end-date');
+            if (startInput) startInput.value = '';
+            if (endInput) endInput.value = '';
+            filterAndRenderLogsTable();
+        }
+
+        function toggleDateSort() {
+            logsSortDirection = logsSortDirection === 'desc' ? 'asc' : 'desc';
+            const icon = document.getElementById('sort-date-icon');
+            if (icon) {
+                icon.textContent = logsSortDirection === 'desc' ? '▼' : '▲';
+            }
+            filterAndRenderLogsTable();
+        }
+        
+        async function loadPipelineLogs() {
+            try {
+                const response = await fetch('/api/pipeline-logs/');
+                const data = await response.json();
+                if (data.status === 'success') {
+                    globalPipelineLogs = data.articles_log;
+                    window.pipelineLogsSummary = data.summary;
+                    updateGlobalLogsUI();
+                }
+            } catch (error) {
+                console.error("Failed to load pipeline logs:", error);
+            }
+        }
+        
+        function updateGlobalLogsUI() {
+            const fetchedEl = document.getElementById('log-stat-fetched');
+            const selectedEl = document.getElementById('log-stat-selected');
+            const rejectedEl = document.getElementById('log-stat-rejected');
+            
+            if (window.pipelineLogsSummary) {
+                if (fetchedEl) fetchedEl.textContent = window.pipelineLogsSummary.total_fetched;
+                if (selectedEl) selectedEl.textContent = window.pipelineLogsSummary.total_selected;
+                if (rejectedEl) rejectedEl.textContent = window.pipelineLogsSummary.total_rejected;
+            }
+            
+            filterAndRenderLogsTable();
+        }
+
+        function filterAndRenderLogsTable() {
+            const searchQuery = document.getElementById('logs-search-input')?.value.toLowerCase().trim() || '';
+            const statusFilter = document.getElementById('logs-status-filter')?.value || '';
+            const startDateVal = document.getElementById('logs-start-date')?.value || '';
+            const endDateVal = document.getElementById('logs-end-date')?.value || '';
+            const tbody = document.getElementById('logs-table-body');
+            
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            const filtered = globalPipelineLogs.filter(log => {
+                const titleMatch = log.title.toLowerCase().includes(searchQuery) || log.source.toLowerCase().includes(searchQuery);
+                const isPassed = log.status.toLowerCase() === 'saved' || log.status.toLowerCase() === 'passed';
+                const statusMatch = !statusFilter || 
+                    (statusFilter === 'passed' && isPassed) ||
+                    (statusFilter === 'rejected' && !isPassed);
+                
+                let dateMatch = true;
+                if (log.published_date) {
+                    const logDate = new Date(log.published_date);
+                    if (startDateVal) {
+                        const startDate = new Date(startDateVal);
+                        dateMatch = dateMatch && (logDate >= startDate);
+                    }
+                    if (endDateVal) {
+                        const endDate = new Date(endDateVal);
+                        dateMatch = dateMatch && (logDate <= endDate);
+                    }
+                } else if (startDateVal || endDateVal) {
+                    dateMatch = false;
+                }
+                
+                return titleMatch && statusMatch && dateMatch;
+            });
+
+            // Update metrics dynamically
+            const fetchedEl = document.getElementById('log-stat-fetched');
+            const selectedEl = document.getElementById('log-stat-selected');
+            const rejectedEl = document.getElementById('log-stat-rejected');
+            
+            const hasActiveFilters = searchQuery !== '' || statusFilter !== '' || startDateVal !== '' || endDateVal !== '';
+            
+            if (hasActiveFilters) {
+                let totalPassed = 0;
+                let totalRejected = 0;
+                filtered.forEach(log => {
+                    const isPassed = log.status.toLowerCase() === 'saved' || log.status.toLowerCase() === 'passed';
+                    if (isPassed) {
+                        totalPassed++;
+                    } else {
+                        totalRejected++;
+                    }
+                });
+                if (fetchedEl) fetchedEl.textContent = totalPassed + totalRejected;
+                if (selectedEl) selectedEl.textContent = totalPassed;
+                if (rejectedEl) rejectedEl.textContent = totalRejected;
+            } else if (window.pipelineLogsSummary) {
+                if (fetchedEl) fetchedEl.textContent = window.pipelineLogsSummary.total_fetched;
+                if (selectedEl) selectedEl.textContent = window.pipelineLogsSummary.total_selected;
+                if (rejectedEl) rejectedEl.textContent = window.pipelineLogsSummary.total_rejected;
+            }
+            
+            // Sort by published date based on logsSortDirection
+            filtered.sort((a, b) => {
+                const dateA = new Date(a.published_date);
+                const dateB = new Date(b.published_date);
+                const valA = isNaN(dateA.getTime()) ? 0 : dateA.getTime();
+                const valB = isNaN(dateB.getTime()) ? 0 : dateB.getTime();
+                
+                if (logsSortDirection === 'desc') {
+                    return valB - valA;
+                } else {
+                    return valA - valB;
+                }
+            });
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">No matching scraper logs found.</td></tr>`;
+                return;
+            }
+            
+            filtered.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => selectLogItem(tr, log);
+                
+                let dateDisplay = log.published_date;
+                try {
+                    const dt = new Date(log.published_date);
+                    if (!isNaN(dt.getTime())) {
+                        dateDisplay = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                    }
+                } catch(e) {}
+                
+                const isPassed = log.status.toLowerCase() === 'saved' || log.status.toLowerCase() === 'passed';
+                const badgeClass = isPassed ? 'log-badge-passed' : 'log-badge-rejected';
+                
+                let displayStatus = log.status.toUpperCase();
+                if (displayStatus === 'SAVED') {
+                    displayStatus = 'PASSED';
+                } else if (displayStatus.startsWith('SKIPPED_')) {
+                    displayStatus = displayStatus.replace('SKIPPED_', 'REJECTED_');
+                }
+                
+                tr.innerHTML = `
+                    <td style="font-weight: 500;">${log.source}</td>
+                    <td>${log.title}</td>
+                    <td>${dateDisplay}</td>
+                    <td><span class="${badgeClass}">${displayStatus}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function selectLogItem(tr, log) {
+            const rows = document.querySelectorAll('#logs-table-body tr');
+            rows.forEach(r => r.classList.remove('active'));
+            tr.classList.add('active');
+            
+            const detailContainer = document.getElementById('log-detail-steps');
+            const detailTitle = document.getElementById('log-detail-title');
+            
+            if (!detailContainer || !detailTitle) return;
+            
+            if (log.link && log.link !== '#') {
+                detailTitle.innerHTML = `<a href="${log.link}" target="_blank" style="color: #111827; text-decoration: none; border-bottom: 1px dashed #6b7280; padding-bottom: 2px;">${log.title}</a>`;
+            } else {
+                detailTitle.textContent = log.title;
+            }
+            
+            detailContainer.innerHTML = '';
+            
+            const isPassed = log.status.toLowerCase() === 'saved' || log.status.toLowerCase() === 'passed';
+            const badgeClass = isPassed ? 'log-badge-passed' : 'log-badge-rejected';
+            
+            let displayStatus = log.status.toUpperCase();
+            if (displayStatus === 'SAVED') {
+                displayStatus = 'PASSED';
+            } else if (displayStatus.startsWith('SKIPPED_')) {
+                displayStatus = displayStatus.replace('SKIPPED_', 'REJECTED_');
+            }
+
+            let dateDisplay = log.published_date;
+            try {
+                const dt = new Date(log.published_date);
+                if (!isNaN(dt.getTime())) {
+                    dateDisplay = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                }
+            } catch(e) {}
+
+            // Create metadata card
+            const metaCard = document.createElement('div');
+            metaCard.innerHTML = `
+                <div class="log-meta-card" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="font-weight: 600; color: #4b5563;">Source:</span>
+                        <span style="color: #111827; font-weight: 500;">${log.source}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="font-weight: 600; color: #4b5563;">Processed Date:</span>
+                        <span style="color: #111827;">${dateDisplay}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; color: #4b5563;">Final Status:</span>
+                        <span class="${badgeClass}" style="font-size: 0.72rem; padding: 3px 8px;">${displayStatus}</span>
+                    </div>
+                    ${log.skip_reason ? `
+                    <div style="border-top: 1px dashed #e5e7eb; padding-top: 10px; margin-top: 5px;">
+                        <span style="font-weight: 600; color: #b91c1c; display: block; margin-bottom: 4px;">Reason for Rejection / Skip:</span>
+                        <span style="color: #374151; font-style: italic; line-height: 1.4; display: block;">${log.skip_reason}</span>
+                    </div>
+                    ` : ''}
+                    ${log.link && log.link !== '#' ? `
+                    <div style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 5px;">
+                        <a href="${log.link}" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+                            View Original Source Article
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                        </a>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            detailContainer.appendChild(metaCard);
+            
+            if (!log.steps || log.steps.length === 0) {
+                const noSteps = document.createElement('div');
+                noSteps.style.padding = '20px';
+                noSteps.style.textAlign = 'center';
+                noSteps.style.color = 'var(--text-muted)';
+                noSteps.textContent = 'No execution steps recorded.';
+                detailContainer.appendChild(noSteps);
+                return;
+            }
+            
+            const vLine = document.createElement('div');
+            vLine.style.position = 'absolute';
+            vLine.style.left = '9px';
+            vLine.style.top = '5px';
+            vLine.style.bottom = '5px';
+            vLine.style.width = '2px';
+            vLine.style.background = '#d2d6df';
+            vLine.style.zIndex = '1';
+            
+            const stepsWrapper = document.createElement('div');
+            stepsWrapper.style.position = 'relative';
+            stepsWrapper.style.display = 'flex';
+            stepsWrapper.style.flexDirection = 'column';
+            stepsWrapper.style.gap = '15px';
+            stepsWrapper.appendChild(vLine);
+            
+            log.steps.forEach(step => {
+                const stepRow = document.createElement('div');
+                stepRow.style.display = 'flex';
+                stepRow.style.gap = '15px';
+                stepRow.style.position = 'relative';
+                stepRow.style.zIndex = '2';
+                
+                const dotColor = step.status === 'PASSED' ? '#10b981' : '#ef4444';
+                const stepDot = document.createElement('div');
+                stepDot.style.width = '20px';
+                stepDot.style.height = '20px';
+                stepDot.style.borderRadius = '50%';
+                stepDot.style.background = dotColor;
+                stepDot.style.border = '4px solid #fff';
+                stepDot.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+                stepDot.style.flexShrink = '0';
+                
+                const stepContent = document.createElement('div');
+                stepContent.style.flex = '1';
+                stepContent.style.background = '#ffffff';
+                stepContent.style.border = '1px solid #e5e7eb';
+                stepContent.style.borderRadius = '6px';
+                stepContent.style.padding = '10px 12px';
+                
+                const stepHeader = document.createElement('div');
+                stepHeader.style.display = 'flex';
+                stepHeader.style.justifyContent = 'space-between';
+                stepHeader.style.marginBottom = '4px';
+                
+                const stepTitle = document.createElement('span');
+                stepTitle.style.fontSize = '0.82rem';
+                stepTitle.style.fontWeight = '600';
+                stepTitle.style.color = '#374151';
+                stepTitle.textContent = step.step;
+                
+                const stepBadge = document.createElement('span');
+                stepBadge.style.fontSize = '0.7rem';
+                stepBadge.style.fontWeight = '700';
+                stepBadge.style.padding = '2px 6px';
+                stepBadge.style.borderRadius = '4px';
+                stepBadge.style.textTransform = 'uppercase';
+                if (step.status === 'PASSED') {
+                    stepBadge.style.background = '#d1fae5';
+                    stepBadge.style.color = '#065f46';
+                    stepBadge.textContent = 'Passed';
+                } else {
+                    stepBadge.style.background = '#fee2e2';
+                    stepBadge.style.color = '#991b1b';
+                    stepBadge.textContent = 'Failed';
+                }
+                
+                stepHeader.appendChild(stepTitle);
+                stepHeader.appendChild(stepBadge);
+                
+                const stepDetail = document.createElement('div');
+                stepDetail.style.fontSize = '0.78rem';
+                stepDetail.style.color = '#6b7280';
+                if (step.step === 'Taxonomy Classification') {
+                    stepDetail.innerHTML = formatTaxonomyDetail(step.detail, log);
+                } else {
+                    stepDetail.innerHTML = linkify(step.detail);
+                }
+                
+                stepContent.appendChild(stepHeader);
+                stepContent.appendChild(stepDetail);
+                
+                stepRow.appendChild(stepDot);
+                stepRow.appendChild(stepContent);
+                
+                stepsWrapper.appendChild(stepRow);
+            });
+            
+            detailContainer.appendChild(stepsWrapper);
+        }
+
+        function renderPipelineStepsForArticle(title) {
+            const loadingEl = document.getElementById('pipeline-loading');
+            const listEl = document.getElementById('pipeline-steps-list');
+            const timelineEl = document.getElementById('pipeline-steps-timeline');
+            
+            if (!listEl) return;
+            
+            listEl.innerHTML = '';
+            
+            const cleanTitle = title.toLowerCase().trim();
+            const logEntry = globalPipelineLogs.find(log => {
+                const logTitle = log.title.toLowerCase().trim();
+                return logTitle.includes(cleanTitle) || cleanTitle.includes(logTitle);
+            });
+            
+            if (!logEntry || !logEntry.steps || logEntry.steps.length === 0) {
+                if (loadingEl) {
+                    loadingEl.style.display = 'block';
+                    loadingEl.textContent = 'No scraper pipeline verification steps found for this article.';
+                }
+                return;
+            }
+            
+            if (loadingEl) loadingEl.style.display = 'none';
+            
+            const vLine = document.createElement('div');
+            vLine.style.position = 'absolute';
+            vLine.style.left = '9px';
+            vLine.style.top = '5px';
+            vLine.style.bottom = '5px';
+            vLine.style.width = '2px';
+            vLine.style.background = '#d2d6df';
+            vLine.style.zIndex = '1';
+            listEl.appendChild(vLine);
+            
+            logEntry.steps.forEach(step => {
+                const stepRow = document.createElement('div');
+                stepRow.style.display = 'flex';
+                stepRow.style.gap = '15px';
+                stepRow.style.position = 'relative';
+                stepRow.style.zIndex = '2';
+                
+                const dotColor = step.status === 'PASSED' ? '#10b981' : '#ef4444';
+                const stepDot = document.createElement('div');
+                stepDot.style.width = '20px';
+                stepDot.style.height = '20px';
+                stepDot.style.borderRadius = '50%';
+                stepDot.style.background = dotColor;
+                stepDot.style.border = '4px solid #fff';
+                stepDot.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+                stepDot.style.flexShrink = '0';
+                
+                const stepContent = document.createElement('div');
+                stepContent.style.flex = '1';
+                stepContent.style.background = '#f9fafb';
+                stepContent.style.border = '1px solid #e5e7eb';
+                stepContent.style.borderRadius = '6px';
+                stepContent.style.padding = '10px 12px';
+                
+                const stepHeader = document.createElement('div');
+                stepHeader.style.display = 'flex';
+                stepHeader.style.justifyContent = 'space-between';
+                stepHeader.style.marginBottom = '4px';
+                
+                const stepTitle = document.createElement('span');
+                stepTitle.style.fontSize = '0.82rem';
+                stepTitle.style.fontWeight = '600';
+                stepTitle.style.color = '#374151';
+                stepTitle.textContent = step.step;
+                
+                const stepBadge = document.createElement('span');
+                stepBadge.style.fontSize = '0.7rem';
+                stepBadge.style.fontWeight = '700';
+                stepBadge.style.padding = '2px 6px';
+                stepBadge.style.borderRadius = '4px';
+                stepBadge.style.textTransform = 'uppercase';
+                if (step.status === 'PASSED') {
+                    stepBadge.style.background = '#d1fae5';
+                    stepBadge.style.color = '#065f46';
+                    stepBadge.textContent = 'Passed';
+                } else {
+                    stepBadge.style.background = '#fee2e2';
+                    stepBadge.style.color = '#991b1b';
+                    stepBadge.textContent = 'Rejected';
+                }
+                
+                stepHeader.appendChild(stepTitle);
+                stepHeader.appendChild(stepBadge);
+                
+                const stepDetail = document.createElement('div');
+                stepDetail.style.fontSize = '0.78rem';
+                stepDetail.style.color = '#6b7280';
+                if (step.step === 'Taxonomy Classification') {
+                    stepDetail.innerHTML = formatTaxonomyDetail(step.detail, logEntry);
+                } else {
+                    stepDetail.innerHTML = linkify(step.detail);
+                }
+                
+                stepContent.appendChild(stepHeader);
+                stepContent.appendChild(stepDetail);
+                
+                stepRow.appendChild(stepDot);
+                stepRow.appendChild(stepContent);
+                
+                listEl.appendChild(stepRow);
+            });
+        }
+        
+        function togglePipelineTimeline() {
+            const timeline = document.getElementById('pipeline-steps-timeline');
+            const btn = document.getElementById('pipeline-steps-toggle-btn');
+            if (timeline) {
+                if (timeline.style.display === 'none' || timeline.style.display === '') {
+                    timeline.style.display = 'block';
+                    if (btn) {
+                        btn.style.background = '#eef5ff';
+                        btn.style.borderColor = '#3b82f6';
+                    }
+                } else {
+                    timeline.style.display = 'none';
+                    if (btn) {
+                        btn.style.background = 'none';
+                        btn.style.borderColor = 'var(--border-color)';
+                    }
+                }
+            }
+        }
+
+        function openLogsModal() {
+            const modal = document.getElementById('pipeline-logs-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                filterAndRenderLogsTable();
+            }
+        }
+
+        function closeLogsModal() {
+            const modal = document.getElementById('pipeline-logs-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            loadPipelineLogs();
+            
+            const modal = document.getElementById('pipeline-logs-modal');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeLogsModal();
+                });
+            }
+            
+            const searchInput = document.getElementById('logs-search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', filterAndRenderLogsTable);
+            }
+            
+            const statusFilter = document.getElementById('logs-status-filter');
+            if (statusFilter) {
+                statusFilter.addEventListener('change', filterAndRenderLogsTable);
+            }
+
+            const startDateInput = document.getElementById('logs-start-date');
+            if (startDateInput) {
+                startDateInput.addEventListener('change', filterAndRenderLogsTable);
+            }
+            
+            const endDateInput = document.getElementById('logs-end-date');
+            if (endDateInput) {
+                endDateInput.addEventListener('change', filterAndRenderLogsTable);
+            }
+            
+            const logFab = document.getElementById('logs-fab-btn');
+            if (logFab) {
+                logFab.addEventListener('click', openLogsModal);
+            }
+        });
     </script>
+    <!-- GLOBAL PIPELINE LOGS FAB BUTTON -->
+    <button class="logs-fab" id="logs-fab-btn" title="Scraper Pipeline Logs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px;">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- GLOBAL PIPELINE LOGS EXPLORER MODAL -->
+    <div class="logs-modal" id="pipeline-logs-modal">
+        <div class="logs-modal-content">
+            <div class="logs-modal-header">
+                <h2>Pipeline Audit & Scraper Verification Logs</h2>
+                <button type="button" onclick="closeLogsModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            
+            <!-- Metrics Summary Cards -->
+            <div class="logs-metric-container">
+                <div class="logs-metric-card">
+                    <span class="metric-label">Total Fetched Feeds</span>
+                    <span class="metric-value" id="log-stat-fetched">0</span>
+                </div>
+                <div class="logs-metric-card" style="border-left: 4px solid #10b981;">
+                    <span class="metric-label" style="color: #065f46;">Passed (Staged to Feed)</span>
+                    <span class="metric-value" id="log-stat-selected" style="color: #065f46;">0</span>
+                </div>
+                <div class="logs-metric-card" style="border-left: 4px solid #ef4444;">
+                    <span class="metric-label" style="color: #991b1b;">Rejected (Filtered Out)</span>
+                    <span class="metric-value" id="log-stat-rejected" style="color: #991b1b;">0</span>
+                </div>
+            </div>
+            
+            <div class="logs-modal-body">
+                <!-- Left panel: List of all logged articles -->
+                <div class="logs-sidebar">
+                    <div class="logs-search-bar" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                        <div style="display: flex; gap: 10px; width: 100%;">
+                            <input type="text" id="logs-search-input" placeholder="Search logs by headline, source..." style="flex: 1; padding: 8px 12px; font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: 6px; outline: none;">
+                            <select id="logs-status-filter" style="padding: 8px 12px; font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: 6px; outline: none; background: white; cursor: pointer; color: #4b5563;">
+                                <option value="">All Statuses</option>
+                                <option value="passed">Passed</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                            <button type="button" id="logs-refresh-btn" onclick="loadPipelineLogs()" title="Refresh Logs" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #4b5563; transition: all 0.2s; outline: none;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='white'">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            </button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.8rem; color: #4b5563; background: #f9fafb; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                            <span style="font-weight: 500;">Filter by Date:</span>
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="font-size: 0.75rem; color: #9ca3af;">From</span>
+                                <input type="datetime-local" id="logs-start-date" style="padding: 4px 8px; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; outline: none; background: white; color: #4b5563;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="font-size: 0.75rem; color: #9ca3af;">To</span>
+                                <input type="datetime-local" id="logs-end-date" style="padding: 4px 8px; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; outline: none; background: white; color: #4b5563;">
+                            </div>
+                            <button type="button" onclick="clearLogsDateFilter()" style="margin-left: auto; padding: 4px 10px; font-size: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; color: #374151; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='white'">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div class="logs-table-container">
+                        <table class="logs-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%;">Source</th>
+                                    <th style="width: 50%;">Headline</th>
+                                    <th id="sort-date-header" onclick="toggleDateSort()" style="width: 18%; cursor: pointer; user-select: none; transition: background 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">
+                                        Published Date <span id="sort-date-icon" style="font-size: 0.75rem; margin-left: 4px;">▼</span>
+                                    </th>
+                                    <th style="width: 12%;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-table-body">
+                                <tr>
+                                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">Loading pipeline verification logs...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Right panel: Detailed steps of the selected logged article -->
+                <div class="logs-detail-panel">
+                    <h3 id="log-detail-title" style="margin-top: 0; font-size: 1rem; font-weight: 600; color: #111827; line-height: 1.4; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">Select an article from the list to view its pipeline validation steps.</h3>
+                    <div id="log-detail-steps" style="margin-top: 20px;">
+                        <!-- Steps timeline will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -12,15 +12,37 @@ from newsfeeds.spacy_utils import extract_locations_hybrid
 from newsfeeds.management.commands import fetch_indian_economy_news
 
 def read_docx_text(file_like) -> str:
-    """Reads raw text from a docx file-like object using zipfile and xml parsing (no external dependencies)."""
+    """Reads raw text from a docx file-like object using zipfile and xml parsing, with plain text fallback."""
+    import io
     try:
-        with zipfile.ZipFile(file_like) as docx:
+        # Read file content into memory to support zipfile operations reliably on Django file uploads
+        file_bytes = file_like.read()
+        if not file_bytes:
+            raise ValueError("Uploaded file is empty (0 bytes). Please make sure you have saved content inside it.")
+            
+        if hasattr(file_like, 'seek'):
+            file_like.seek(0)
+            
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as docx:
             xml_content = docx.read('word/document.xml')
             root = ET.fromstring(xml_content)
             namespaces = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
-            texts = [node.text for node in root.findall('.//w:t', namespaces) if node.text]
-            return "\n".join(texts)
+            
+            # Extract text paragraph-by-paragraph to preserve lines and prevent split-run layout issues
+            paragraphs = []
+            for p_node in root.findall('.//w:p', namespaces):
+                p_text = "".join(node.text for node in p_node.findall('.//w:t', namespaces) if node.text)
+                if p_text.strip():
+                    paragraphs.append(p_text.strip())
+            return "\n".join(paragraphs)
     except Exception as e:
+        # Fallback: if the file is not a zip file, it might be a plain text file with a .docx extension
+        try:
+            decoded_text = file_bytes.decode('utf-8', errors='ignore')
+            if "title:" in decoded_text.lower():
+                return decoded_text
+        except Exception:
+            pass
         raise ValueError(f"Failed to parse docx format: {e}")
 
 def parse_manual_content(text_content: str) -> dict:
@@ -124,6 +146,15 @@ def process_manual_article(art: dict, save_to_db: bool = False) -> dict:
     sector_val = classification.get('sector', 'General / Macro') or 'General / Macro'
     
     # Check for general/macro classification and blank them out
+    event_class_lower = event_class_val.lower()
+    sector_lower = sector_val.lower()
+    is_general = (
+        "macro" in event_class_lower or
+        "general" in event_class_lower or
+        "macro" in sector_lower or
+        "general" in sector_lower
+    )
+    
     if any(w in event_class_val.lower() for w in ("macro", "general")):
         event_class_val = ""
     if any(w in sector_val.lower() for w in ("macro", "general")):
@@ -173,6 +204,14 @@ def process_manual_article(art: dict, save_to_db: bool = False) -> dict:
         }
 
     # 7. Save/Update in Django database
+    if is_general:
+        return {
+            "status": "skipped_general",
+            "saved": False,
+            "reason": f"Skipped saving due to general classification (Event Class: {classification.get('event_class')}, Sector: {classification.get('sector')}).",
+            "article": analysis_data
+        }
+
     # Test to avoid duplicate news (check if title, link, and date all match an existing entry in DB)
     if NewsArticle.objects.filter(
         title=title,

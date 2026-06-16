@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import ollama
 import feedparser
@@ -367,7 +368,8 @@ def classify_article(title: str, description: str, full_text: str = "") -> dict:
             "sector": best_sector_display,
             "sub_type": f"{best_l2} ({l2_matches_str})",
             "channel": channel,
-            "all_matched": list(dict.fromkeys([m[2] for m in matched_kws]))  # keep unique, preserve order
+            "all_matched": list(dict.fromkeys([m[2] for m in matched_kws])),  # keep unique, preserve order
+            "reason": f"Matched keyword mapping for {best_original_kw} under {best_l1} / {best_l2}."
         }
         
     return {
@@ -375,7 +377,8 @@ def classify_article(title: str, description: str, full_text: str = "") -> dict:
         "sector": best_sector_display,
         "sub_type": f"General_Terms ({best_kw})" if best_kw != "Economy" else "General_Terms (General)",
         "channel": fallback_channel,
-        "all_matched": []
+        "all_matched": [],
+        "reason": f"Fallback rule-based classification based on sector matching for {best_sector}."
     }
 
 
@@ -558,40 +561,43 @@ ORIGINAL L1 EVENT CLASSES:
 NEW 22 SPECIFIC SECTORS:
 {list(sector_keywords.keys())}
 
-EXAMPLE 1 (Monetary Policy Announcement):
-Title: RBI raises repo rate by 25 bps to curb inflation
-Description: The Reserve Bank of India's MPC has decided to hike the policy repo rate as retail inflation remains above the comfort zone.
-Output:
-{{
-  "event_class": "Domestic_Policy",
-  "sector": "Banking_and_Finance",
-  "sub_type": "Monetary_RBI_Policy (Repo Rate, Rate Hike)",
-  "channel": "Interest Rates & Credit"
-}}
-
-EXAMPLE 2 (Global Steel Tariffs):
-Title: US imposes 25% tariff on steel imports to protect domestic industry
-Description: The United States has announced new import duties on steel shipments from India and other countries, risking a retaliatory trade dispute.
-Output:
-{{
-  "event_class": "Trade_Policy",
-  "sector": "Metals_and_Mining",
-  "sub_type": "Trade_Tensions_and_Tariffs (Import Duty, Trade Dispute)",
-  "channel": "Export Competitiveness & Duties"
-}}
-
-ARTICLE TO CLASSIFY:
-Title: {title}
-Description: {description}
-Content: {full_text[:3000]}
-
-INSTRUCTIONS:
-1. Identify the single best matching L1 EVENT CLASS from our taxonomy.
-2. Identify the L2 sub-type key and select 1-2 most relevant keywords/phrases from that L2. Format the "sub_type" exactly as: "L2_Key (Keyword1, Keyword2)".
-3. Select the primary matching SECTOR from the 22 SPECIFIC SECTORS list. If none fits well, output "General / Macro".
-4. Generate a 2-4 word "channel" describing how this impact is transmitted to India.
-5. Return ONLY a valid JSON object. Do not output any other text or explanation.
-"""
+    EXAMPLE 1 (Monetary Policy Announcement):
+    Title: RBI raises repo rate by 25 bps to curb inflation
+    Description: The Reserve Bank of India's MPC has decided to hike the policy repo rate as retail inflation remains above the comfort zone.
+    Output:
+    {{
+      "event_class": "Domestic_Policy",
+      "sector": "Banking_and_Finance",
+      "sub_type": "Monetary_RBI_Policy (Repo Rate, Rate Hike)",
+      "channel": "Interest Rates & Credit",
+      "reason": "Repo rate hikes by RBI are monetary policy actions that directly affect the banking and finance sector."
+    }}
+    
+    EXAMPLE 2 (Global Steel Tariffs):
+    Title: US imposes 25% tariff on steel imports to protect domestic industry
+    Description: The United States has announced new import duties on steel shipments from India and other countries, risking a retaliatory trade dispute.
+    Output:
+    {{
+      "event_class": "Trade_Policy",
+      "sector": "Metals_and_Mining",
+      "sub_type": "Trade_Tensions_and_Tariffs (Import Duty, Trade Dispute)",
+      "channel": "Export Competitiveness & Duties",
+      "reason": "US tariffs on steel imports are trade policy decisions directly impacting the metals and mining sector."
+    }}
+    
+    ARTICLE TO CLASSIFY:
+    Title: {title}
+    Description: {description}
+    Content: {full_text[:3000]}
+    
+    INSTRUCTIONS:
+    1. Identify the single best matching L1 EVENT CLASS from our taxonomy.
+    2. Identify the L2 sub-type key and select 1-2 most relevant keywords/phrases from that L2. Format the "sub_type" exactly as: "L2_Key (Keyword1, Keyword2)".
+    3. Select the primary matching SECTOR from the 22 SPECIFIC SECTORS list. If none fits well, output "General / Macro".
+    4. Generate a 2-4 word "channel" describing how this impact is transmitted to India.
+    5. Generate a brief 1-2 sentence "reason" explaining why this event class, sector, and channel were selected based on the article's economic context.
+    6. Return ONLY a valid JSON object. Do not output any other text or explanation.
+    """
     try:
         response = ollama.chat(
             model=OLLAMA_MODEL,
@@ -611,6 +617,7 @@ INSTRUCTIONS:
         sector_raw = data.get('sector', '').strip()
         s_type_raw = data.get('sub_type', '').strip()
         chan = data.get('channel', '').strip()
+        reason = data.get('reason', '').strip()
         
         # 1. Intelligent Normalization & Validation of event_class
         e_class = normalize_l1(e_class_raw)
@@ -655,11 +662,15 @@ INSTRUCTIONS:
         if sector_kws:
             sector_display = f"{sector} ({', '.join(sector_kws)})"
             
+        if not reason:
+            reason = f"Classified under {e_class} and {sector_display} based on economic context matching."
+            
         return {
             "event_class": e_class,
             "sector": sector_display,
             "sub_type": s_type,
-            "channel": channel
+            "channel": channel,
+            "reason": reason
         }
         
     except Exception as e:
@@ -1168,19 +1179,8 @@ class Command(BaseCommand):
             import sys
             sys.exit(1)
         
-        # Clean up any existing articles with general/macro classifications from database
-        try:
-            from django.db.models import Q
-            deleted_count, _ = NewsArticle.objects.filter(
-                Q(event_class__icontains="macro") |
-                Q(event_class__icontains="general") |
-                Q(sector__icontains="macro") |
-                Q(sector__icontains="general")
-            ).delete()
-            if deleted_count > 0:
-                self.stdout.write(f"  [INFO] Cleaned up {deleted_count} existing general/macro articles from the database.")
-        except Exception as e:
-            self.stdout.write(f"  [WARNING] Failed to run database cleanup for general/macro articles: {e}")
+        # We do not delete existing general/macro articles on fetch to ensure data stays in the database
+        pass
         
         now = datetime.now()
         
@@ -1273,10 +1273,35 @@ class Command(BaseCommand):
             OLLAMA_MODEL = config["model"]
             log_file = config["log_file"]
 
+            # Resolve log_file path robustly
+            if not os.path.isabs(log_file):
+                if not os.path.exists(log_file):
+                    from django.conf import settings
+                    base_path = os.path.join(settings.BASE_DIR, log_file)
+                    if os.path.exists(base_path):
+                        log_file = base_path
+                    else:
+                        parent_path = os.path.join(os.path.dirname(settings.BASE_DIR), log_file)
+                        if os.path.exists(parent_path):
+                            log_file = parent_path
+                        else:
+                            log_file = base_path
+
             self.stdout.write(f"\n\n##################################################")
             self.stdout.write(f"RUNNING PIPELINE WITH MODEL: {OLLAMA_MODEL}")
             self.stdout.write(f"TARGET LOG FILE: {log_file}")
             self.stdout.write(f"##################################################\n")
+
+            existing_data = {}
+            if os.path.exists(log_file):
+                try:
+                    with open(log_file, "r", encoding="utf-8") as f:
+                        existing_data = json.load(f)
+                except Exception as e:
+                    self.stdout.write(f"Warning: failed to load existing JSON log: {e}")
+
+            existing_fetched = existing_data.get("fetched_rss_feeds", [])
+            existing_all_log = existing_data.get("all_articles_log", [])
 
             # Reset tracking lists for this specific model run
             selected_articles = []
@@ -1456,31 +1481,50 @@ class Command(BaseCommand):
             self.stdout.write(f"==================================================")
             
             import csv
-            import os
             
             final_selected_articles = []
             saved_count = 0
             
             def save_live_outputs_stream():
                 """Helper to write live files on every single loop iteration"""
+                # Deduplicate and merge fetched RSS feeds
+                seen_fetched_links = {item.get("link") for item in existing_fetched if item.get("link")}
+                seen_fetched_titles = {item.get("title", "").lower().strip() for item in existing_fetched if item.get("title")}
+                
+                new_fetched = [
+                    {
+                        "title": art["title"],
+                        "link": art["link"],
+                        "description": art.get("description", ""),
+                        "source": art["source"],
+                        "published_date": art["published_date"]
+                    }
+                    for art in fetched_articles
+                    if art.get("link") not in seen_fetched_links and art.get("title", "").lower().strip() not in seen_fetched_titles
+                ]
+                
+                merged_fetched = existing_fetched + new_fetched
+
+                # Deduplicate and merge all articles logs
+                seen_all_log_links = {item.get("link") for item in existing_all_log if item.get("link")}
+                seen_all_log_titles = {item.get("title", "").lower().strip() for item in existing_all_log if item.get("title")}
+
+                new_all_log = [
+                    el for el in all_articles_log
+                    if el.get("link") not in seen_all_log_links and el.get("title", "").lower().strip() not in seen_all_log_titles
+                ]
+
+                merged_all_log = existing_all_log + new_all_log
+
                 output_log_structure = {
-                    "fetched_rss_feeds": [
-                        {
-                            "title": art["title"],
-                            "link": art["link"],
-                            "description": art.get("description", ""),
-                            "source": art["source"],
-                            "published_date": art["published_date"]
-                        }
-                        for art in fetched_articles
-                    ],
+                    "fetched_rss_feeds": merged_fetched,
                     "selected_articles": [
-                        el for el in all_articles_log if el["status"] == "saved"
+                        el for el in merged_all_log if el.get("status") in ["saved", "passed"]
                     ],
                     "rejected_articles": [
-                        el for el in all_articles_log if el["status"] != "saved"
+                        el for el in merged_all_log if el.get("status") not in ["saved", "passed"]
                     ],
-                    "all_articles_log": all_articles_log
+                    "all_articles_log": merged_all_log
                 }
                 
                 # 1. Save JSON Log
@@ -1710,7 +1754,7 @@ class Command(BaseCommand):
                 entry_log["steps"].append({
                     "step": "Taxonomy Classification",
                     "status": "PASSED",
-                    "detail": f"L1: {classification.get('event_class')}, L2: {classification.get('sub_type')}, Keyword: {classification.get('channel')}"
+                    "detail": f"L1: {classification.get('event_class')}, L2: {classification.get('sub_type')}, Sector: {classification.get('sector')}, Channel: {classification.get('channel')}, Reason: {classification.get('reason')}"
                 })
                 
                 self.stdout.write(f"  Analyzing economic sentiment direction...")
@@ -1773,12 +1817,12 @@ class Command(BaseCommand):
                     
                     if is_general:
                         self.stdout.write(f"  -> SKIPPED DB SAVE: Article has general/macro classification (Event Class: {event_class_val}, Sector: {sector_val}).")
-                        # Remove it from the database if it exists
-                        deleted_count, _ = NewsArticle.objects.filter(
-                            title=art["title"]
-                        ).delete()
-                        if deleted_count > 0:
-                            self.stdout.write(f"     Removed {deleted_count} existing article(s) from database.")
+                        # We do not remove it from the database if it exists to ensure old news stays in the db
+                        # deleted_count, _ = NewsArticle.objects.filter(
+                        #     title=art["title"]
+                        # ).delete()
+                        # if deleted_count > 0:
+                        #     self.stdout.write(f"     Removed {deleted_count} existing article(s) from database.")
                             
                         entry_log["status"] = "skipped_general"
                         entry_log["skip_reason"] = f"General/macro classification (Event Class: {event_class_val}, Sector: {sector_val})."

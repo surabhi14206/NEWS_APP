@@ -3,8 +3,24 @@ from django.urls import reverse
 from django.utils import timezone
 from .models import NewsArticle
 
+# Monkeypatch to fix Django + Python 3.14 compatibility issue with copying Context in tests
+from django.template.context import BaseContext
+def patched_copy(self):
+    duplicate = BaseContext.__new__(self.__class__)
+    for k, v in self.__dict__.items():
+        if k != 'dicts':
+            setattr(duplicate, k, v)
+    duplicate.dicts = self.dicts[:]
+    return duplicate
+BaseContext.__copy__ = patched_copy
+
 class ManualAnalysisTestCase(TestCase):
     def setUp(self):
+        from django.contrib.auth.models import User
+        # Create superuser and force login to bypass login required decorator
+        self.user = User.objects.create_superuser(username='admin', password='password')
+        self.client.force_login(self.user)
+
         # Create a regular relevant article to verify sidebar listing works
         self.relevant_article = NewsArticle.objects.create(
             title="Relevant Article",
@@ -27,10 +43,10 @@ class ManualAnalysisTestCase(TestCase):
             'summary': 'Manual article summary.',
             'reason': 'Analyzed manually.',
             'matched_keywords[]': ['economy', 'gdp'],
-            'event_class': 'Macro_Economy',
-            'sector': 'General / Macro',
-            'sub_type': 'General_Terms (General)',
-            'channel': 'Macroeconomic Transmission',
+            'event_class': 'Domestic_Policy',
+            'sector': 'Banking_and_Finance',
+            'sub_type': 'Monetary_RBI_Policy (Repo Rate)',
+            'channel': 'Interest Rates & Credit',
             'direction': 'positive',
             'impact_score': 3,
             'direction_reason': 'Positive GDP growth.',
@@ -163,10 +179,10 @@ class ManualAnalysisTestCase(TestCase):
             'summary': 'Summary for duplicate.',
             'reason': 'Analyzed manually.',
             'matched_keywords[]': ['economy'],
-            'event_class': 'Macro_Economy',
-            'sector': 'General / Macro',
-            'sub_type': 'General_Terms (General)',
-            'channel': 'Macroeconomic Transmission',
+            'event_class': 'Domestic_Policy',
+            'sector': 'Banking_and_Finance',
+            'sub_type': 'Monetary_RBI_Policy (Repo Rate)',
+            'channel': 'Interest Rates & Credit',
             'direction': 'positive',
             'impact_score': 1,
             'direction_reason': 'Reason.',
@@ -234,10 +250,10 @@ class ManualAnalysisTestCase(TestCase):
             'summary': 'Summary.',
             'reason': 'Analyzed manually.',
             'matched_keywords[]': ['economy'],
-            'event_class': 'Macro_Economy',
-            'sector': 'General / Macro',
-            'sub_type': 'General_Terms (General)',
-            'channel': 'Macroeconomic Transmission',
+            'event_class': 'Domestic_Policy',
+            'sector': 'Banking_and_Finance',
+            'sub_type': 'Monetary_RBI_Policy (Repo Rate)',
+            'channel': 'Interest Rates & Credit',
             'direction': 'positive',
             'impact_score': 1,
             'direction_reason': 'Reason.',
@@ -278,14 +294,11 @@ class ManualAnalysisTestCase(TestCase):
             'origin': 'India'
         }
         response = self.client.post(url, post_data)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         data = response.json()
-        self.assertEqual(data['status'], 'success')
-        
-        article_id = data['article']['id']
-        article = NewsArticle.objects.get(id=article_id)
-        self.assertEqual(article.event_class, "")
-        self.assertEqual(article.sector, "")
+        self.assertEqual(data['status'], 'error')
+        self.assertIn('Skipped saving', data['message'])
+        self.assertFalse(NewsArticle.objects.filter(title='General Macro Blanking Test').exists())
 
     def test_general_macro_blanking_in_process_manual_article(self):
         from newsfeeds.management.commands.manual_analysis import process_manual_article
@@ -311,13 +324,11 @@ class ManualAnalysisTestCase(TestCase):
             with patch('newsfeeds.management.commands.fetch_indian_economy_news.generate_summary', return_value='summary'):
                 with patch('newsfeeds.management.commands.fetch_indian_economy_news.analyze_direction_from_india_view', return_value={'direction': 'neutral', 'impact_score': 0, 'reason': ''}):
                     res = process_manual_article(test_art, save_to_db=True)
-                    self.assertEqual(res['status'], 'success')
-                    self.assertTrue(res['saved'])
+                    self.assertEqual(res['status'], 'skipped_general')
+                    self.assertFalse(res['saved'])
                     
-                    # Verify saved article
-                    article = NewsArticle.objects.get(title='CLI General Macro Test')
-                    self.assertEqual(article.event_class, "")
-                    self.assertEqual(article.sector, "")
+                    # Verify saved article does not exist
+                    self.assertFalse(NewsArticle.objects.filter(title='CLI General Macro Test').exists())
 
     def test_fetch_command_startup_cleanup_excludes_global_factors(self):
         from django.core.management import call_command
@@ -352,7 +363,36 @@ class ManualAnalysisTestCase(TestCase):
         with patch('newsfeeds.management.commands.fetch_indian_economy_news.RSS_FEEDS', {}):
             call_command('fetch_indian_economy_news')
         
-        # 3. Assert macro_article is deleted and global_article is NOT deleted
-        self.assertFalse(NewsArticle.objects.filter(id=macro_article.id).exists())
+        # 3. Assert macro_article is NOT deleted (since startup cleanup was disabled) and global_article is NOT deleted
+        self.assertTrue(NewsArticle.objects.filter(id=macro_article.id).exists())
         self.assertTrue(NewsArticle.objects.filter(id=global_article.id).exists())
+
+    def test_read_docx_text_valid_docx(self):
+        import io
+        import zipfile
+        from newsfeeds.management.commands.manual_analysis import read_docx_text
+        
+        # Construct a mini docx zip archive in memory
+        docx_data = io.BytesIO()
+        with zipfile.ZipFile(docx_data, 'w') as zip_file:
+            xml_content = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                <w:body>
+                    <w:p>
+                        <w:r><w:t>title</w:t></w:r>
+                        <w:r><w:t>: </w:t></w:r>
+                        <w:r><w:t>India GDP grows by 8.2%</w:t></w:r>
+                    </w:p>
+                    <w:p>
+                        <w:r><w:t>link: http://example.com</w:t></w:r>
+                    </w:p>
+                </w:body>
+            </w:document>
+            """
+            zip_file.writestr('word/document.xml', xml_content)
+            
+        docx_data.seek(0)
+        text = read_docx_text(docx_data)
+        self.assertIn("title: India GDP grows by 8.2%", text)
+        self.assertIn("link: http://example.com", text)
 

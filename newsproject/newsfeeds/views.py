@@ -1,11 +1,24 @@
 from django.shortcuts import render, redirect
 from django.views.generic import ListView
 from newsfeeds.models import NewsArticle, DuplicateNewsArticle
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.models import User
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.decorators import login_required, user_passes_test
 
-class DashboardView(ListView):
+class DashboardView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = NewsArticle
     template_name = 'dashboard.html'
     context_object_name = 'articles'
+    login_url = 'login'
+
+    def test_func(self):
+        return self.request.user.is_staff or self.request.user.is_superuser
+
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            return redirect('user_dashboard')
+        return redirect('login')
 
     def get_queryset(self):
         # Only show articles that have a valid summary and insights/reason
@@ -92,6 +105,8 @@ def check_and_start_ollama(relevance_model='news_filter_custom:latest', classifi
             
     return ollama_running
 
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def trigger_fetch(request):
     relevance_model = getattr(settings, 'OLLAMA_RELEVANCE_MODEL', 'news_filter_custom:latest')
     classifier_model = getattr(settings, 'OLLAMA_MODEL', 'gemma3:4b')
@@ -121,6 +136,8 @@ def trigger_fetch(request):
 from django.http import JsonResponse
 from newsfeeds.management.commands.manual_analysis import parse_manual_content, process_manual_article, read_docx_text, parse_multiple_manual_contents
 
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
 def manual_analysis_view(request):
     if request.method == 'POST':
         # Check if this is a delete operation
@@ -176,6 +193,22 @@ def manual_analysis_view(request):
                 # Extract and clean event_class and sector values
                 event_class_val = request.POST.get('event_class', 'Macro_Economy') or 'Macro_Economy'
                 sector_val = request.POST.get('sector', 'General / Macro') or 'General / Macro'
+                
+                # Check for general/macro classification and completely skip saving
+                event_class_lower = event_class_val.lower()
+                sector_lower = sector_val.lower()
+                is_general = (
+                    "macro" in event_class_lower or
+                    "general" in event_class_lower or
+                    "macro" in sector_lower or
+                    "general" in sector_lower
+                )
+                if is_general:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': f'Skipped saving: Article has generic classification (Event Class: {event_class_val}, Sector: {sector_val}).'
+                    }, status=400)
+
                 if any(w in event_class_val.lower() for w in ("macro", "general")):
                     event_class_val = ""
                 if any(w in sector_val.lower() for w in ("macro", "general")):
@@ -308,4 +341,147 @@ def manual_analysis_view(request):
             'articles': results
         })
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
+
+class UserDashboardView(LoginRequiredMixin, ListView):
+    model = NewsArticle
+    template_name = 'user_dashboard.html'
+    context_object_name = 'articles'
+    login_url = 'login'
+
+    def get_queryset(self):
+        qs = NewsArticle.objects.filter(is_relevant=True)
+        qs = qs.exclude(summary__in=['', 'Summary could not be generated.', 'Summary could not be completed.', 'Summary could not be generated'])
+        qs = qs.exclude(reason__icontains='Ollama is offline')
+        return qs.order_by('-published_date')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        select_id = self.request.GET.get('select')
+        if select_id:
+            try:
+                context['selected_article'] = NewsArticle.objects.get(id=select_id)
+            except NewsArticle.DoesNotExist:
+                pass
+        return context
+
+
+def login_register_view(request):
+    if request.user.is_authenticated:
+        if request.user.is_staff or request.user.is_superuser:
+            return redirect('dashboard')
+        return redirect('user_dashboard')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+
+        if action == 'login':
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                if user.is_staff or user.is_superuser:
+                    return redirect('dashboard')
+                return redirect('user_dashboard')
+            else:
+                messages.error(request, "Invalid username or password.")
+                return redirect('login')
+
+        elif action == 'register':
+            confirm_pw = request.POST.get('confirm_password', '')
+            is_admin = request.POST.get('is_admin') == 'on'
+
+            if not username or not password:
+                messages.error(request, "All fields are required.")
+                return redirect('/login/?tab=register')
+            
+            if len(username) < 4:
+                messages.error(request, "Username must be at least 4 characters long.")
+                return redirect('/login/?tab=register')
+
+            if len(password) < 6:
+                messages.error(request, "Password must be at least 6 characters long.")
+                return redirect('/login/?tab=register')
+
+            if password != confirm_pw:
+                messages.error(request, "Passwords do not match.")
+                return redirect('/login/?tab=register')
+
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username is already taken.")
+                return redirect('/login/?tab=register')
+
+            try:
+                # Create user
+                user = User.objects.create_user(username=username, password=password)
+                if is_admin:
+                    user.is_staff = True
+                    user.is_superuser = True
+                    user.save()
+                
+                # Log in
+                login(request, user)
+                
+                if user.is_staff or user.is_superuser:
+                    return redirect('dashboard')
+                return redirect('user_dashboard')
+            except Exception as e:
+                messages.error(request, f"Registration failed: {str(e)}")
+                return redirect('/login/?tab=register')
+
+    return render(request, 'login_register.html')
+
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
+
+import os
+import json
+from django.conf import settings
+
+@login_required
+@user_passes_test(lambda u: u.is_staff or u.is_superuser)
+def pipeline_logs_api(request):
+    log_path = os.path.join(settings.BASE_DIR, 'newsfeeds_scrape_log.json')
+    if not os.path.exists(log_path):
+        parent_log_path = os.path.join(os.path.dirname(settings.BASE_DIR), 'newsfeeds_scrape_log.json')
+        if os.path.exists(parent_log_path):
+            log_path = parent_log_path
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Log file not found.'}, status=404)
+            
+    try:
+        with open(log_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        summary = {
+            'total_fetched': len(data.get('fetched_rss_feeds', [])),
+            'total_selected': len(data.get('selected_articles', [])),
+            'total_rejected': len(data.get('rejected_articles', [])),
+        }
+        
+        articles_log = []
+        for art in data.get('all_articles_log', []):
+            articles_log.append({
+                'title': art.get('title', ''),
+                'link': art.get('link', ''),
+                'source': art.get('source', ''),
+                'published_date': art.get('published_date', ''),
+                'status': art.get('status', ''),
+                'skip_reason': art.get('skip_reason', ''),
+                'steps': art.get('steps', []),
+                'insights': art.get('insights', {}),
+                'analysis': art.get('analysis', {})
+            })
+            
+        return JsonResponse({
+            'status': 'success',
+            'summary': summary,
+            'articles_log': articles_log
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': f'Failed to parse log file: {str(e)}'}, status=500)
