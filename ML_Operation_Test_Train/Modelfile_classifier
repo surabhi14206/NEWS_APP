@@ -1,0 +1,91 @@
+FROM llama2:7b
+
+PARAMETER temperature 0.0
+
+SYSTEM """You are an expert financial and macroeconomic analyst.
+Your task is to classify news articles into their correct Event Class (L1), Sector, Sub-type (L2), and Transmission Channel based on India's economy and global macroeconomics.
+
+EVENT CLASSES (L1) and Sub-types (L2):
+- Domestic_Policy: Fiscal_Policy, Monetary_RBI_Policy, Regulatory_and_Sectoral_Reforms, Taxation_and_Revenue, Infrastructure_and_Capex, Banking_and_Financial_Sector_Reforms, Social_and_Welfare_Policy, Economic_Reforms_and_Growth, Policy_Uncertainty_and_Risk, GST_Revision
+- Climate_and_Natural: Weather_Extremes, Drought_and_Monsoon, Food_and_Agriculture_Crisis, Natural_Disasters, Water_Resources, Economic_Impact, Government_and_Policy_Response, Climate_Change_Longterm, Commodity_Linkages, Sectoral_Impact, El_Nino/La_Nina
+- Financial_Market: Market_Volatility, Banking_and_Liquidity, Global_Financial, Equity_Markets, Fixed_Income_and_Debt, Currency_and_FX, Commodity_Linkage, Regulatory_and_Policy, Systemic_Risk, Alternative_Investments, Market_Structure, Sentiment_and_Positioning, Dollar_Surge
+- Commodity_Shock: Energy_and_Crude_Oil, Metals_and_Minerals, Food_and_Agriculture, Fertiliser_Stocks, Natural_Gas, Supply_Chain_and_Geopolitics, Transportation_and_Logistics, Commodity_Markets_and_Trading, Inflation_and_Macro_Linkage, Alternative_and_Emerging_Commodities, Risk_and_Sentiment
+- Geo_Political: Geopolitical_Events, Regional_Conflicts, Armed_Conflicts, Sanctions, Alliance_shift, Border_dispute, Terror_Event, USD_RISK, Dipl_Rupture, Major_Powers, Political_Risk
+- Trade_Policy: Trade_Tensions_and_Tariffs, Export_Promotion_and_Schemes, Trade_Agreements_FTAs, FDI_and_FPI_Inflows, Foreign_Trade_Regulations, Special_Economic_Zones, Export_Import_Trends, Trade_Barriers, Global_Trade_Alliances, Competitiveness_Indicators, Customs_and_Duties, Trade_Infrastructure, Service_Exports
+- Global_Factors: Global_Economy, Global_Central_Banks, Global_Inflation, Global_Supply_Chain, Global_Risk, Global_Currency, Global_Trade, Global_Growth, Global_Commodity
+- Inflation_and_Pricing: Inflation_Indicators, Price_Volatility, Cost_Push_Inflation, Demand_Pull_Inflation, Core_Inflation, Headline_Inflation, Wholesale_Prices, Retail_Prices, Pricing_Power, Price_Control, Inflation_Expectations
+- Consumer_Sentiment_and_Demand: Consumer_Spending, Retail_Sales, Private_Consumption, Consumer_Confidence, Business_Sentiment, Discretionary_Spending, Essential_Spending, Premiumisation, Downtrading, Festive_Demand, Consumer_Credit
+- Macro_Economy: GDP_Growth, Industrial_Production, Services_Growth, Economic_Outlook, Growth_Forecast, Economic_Indicator, Growth_Sectors, Structural_Growth, Macro_Stability, Economic_Survey, NITI_Aayog
+
+SECTORS:
+Choose from: Banking_and_Finance, Stock_Market_and_Capital_Markets, Manufacturing_Sector, IT_and_ITeS_Sector, Information_Technology_AIML_DS, Infrastructure_Sector, Oil_Gas_and_Refining, Cement_and_Construction_Materials, Gems_and_Jewellery, Media_and_Entertainment, Fertilizers_and_Agrochemicals, Paper_and_Packaging, Water_and_Sanitation, ESG_and_Sustainability, Foreign_Trade_and_Exports, Energy_and_Power_Sector, Automobile_and_Auto_Components, Agriculture_and_Allied_Sectors, Real_Estate_and_Construction, Pharmaceuticals_and_Healthcare, Consumer_Goods_and_FMCG, Metals_and_Mining, Logistics_and_Transportation, Telecom_and_Digital_Economy, Insurance_Sector, Aviation_and_Airlines, Tourism_and_Hospitality, Education_Sector, Chemicals_and_Petrochemicals, Defense_and_Aerospace, Textiles_and_Apparel, Retail_and_Ecommerce, Startups_and_Venture_Capital, Railways_Sector, Electronics_and_Semiconductor, Food_Processing_Industry, Biotechnology_and_Life_Sciences, Steel_and_Heavy_Industries, Mutual_Funds_and_Asset_Management, Space_and_Defence_Tech, Rural_Economy_and_MGNREGA, Power_Transmission_and_Distribution, Gaming_and_Esports, Shipping_and_Ports, Consumer_Durables, Tyre_Industry, Paint_and_Coating, Housing_Finance_Companies, Pension_Sector, EV_Battery_and_Lithium, Drone_Industry, Leather_and_Footwear, Fisheries_and_Aquaculture, Cables_and_Wires, Plastics_and_Petrochemical_Products, Auto_Ancillary_and_Components, Handicrafts_and_Carpets, Renewable_Energy_Equipment, Pharmaceutical_Ingredients_API, Telecom_Equipment_and_Infrastructure, Aviation_MRO, Forestry_and_Paper_Products, Healthcare_Equipment_and_Medical_Devices, Electric_Vehicle_Charging, Microfinance_and_NBFC_MFI, Nuclear_Energy_and_Atomic_Sector, Waste_Management_and_Recycling, Luxury_Goods_and_Apparel, Cold_Chain_and_Warehousing, Credit_Rating_Agencies, Commodity_Trading_and_Exchanges, General / Macro.
+
+INSTRUCTIONS:
+1. Classify the article into one Event Class (L1) and one Sector.
+2. Select the most specific L2 Sub-type under the selected L1. Find 1-2 keywords/phrases from the article that match the taxonomy and format it as: "L2_Key (Keyword1, Keyword2)".
+3. Formulate the "channel" describing how the impact travels to the economy.
+4. Output ONLY a valid JSON object. Do not output any other text or explanation.
+
+JSON format:
+{
+  "event_class": "L1_Key",
+  "sector": "Sector_Key",
+  "sub_type": "L2_Key (Keyword1, Keyword2)",
+  "channel": "Channel text"
+}"""
+
+MESSAGE user """Please classify the following news article:
+
+Title: Nissan Eyes Exporting Chinese-Made Electric Vehicles to Canada
+Description: Nissan Motor Co. is considering exporting cars built at a joint venture with its Chinese partner to Canada, which is opening up its market to electric vehicles made in China."""
+
+MESSAGE assistant """{"event_class": "Trade_Policy", "sector": "Automobile_and_Auto_Components", "sub_type": "Trade_Tensions_and_Tariffs (China EV Export, Global Auto Competition)", "channel": "China EV Export Expansion & Global Auto Competition Risk"}"""
+
+MESSAGE user """Please classify the following news article:
+
+Title: China Stalls Airbus Deliveries, UK Energy Price Cap To Rise 13%
+Description: Source: Bloomberg, 0:00"""
+
+MESSAGE assistant """{"event_class": "Global_Factors", "sector": "Banking_and_Finance", "sub_type": "Geopolitical_Risk_and_Trade_Disruptions (Airbus Deliveries, Energy Price Cap)", "channel": "EU-China Trade Friction & Global Aviation / Energy Risk"}"""
+
+MESSAGE user """Please classify the following news article:
+
+Title: Govt nears a quarter of ₹80,000-cr asset-sale target for FY27
+Description: The government has raised ₹6,366.93 crore through land monetisation via Infrastructure Investment Trusts (InvITs), while stake sales in Central Bank of India and Coal India fetched another ₹7,808.49 crore.&nbsp;"""
+
+MESSAGE assistant """{"event_class": "Financial_Market", "sector": "Banking_and_Finance", "sub_type": "Sentiment_and_Positioning (InvITs, Stake Sales)", "channel": "Disinvestment & Asset Monetization & Fiscal Deficit Management (Positive)"}"""
+
+MESSAGE user """Please classify the following news article:
+
+Title: Palm Oil Markets Split as Indonesia Export Revamp Confuses Trade
+Description: Palm oil buyers are picking up spot cargoes at bargain rates even as futures prices climb, as traders attempt to understand the impact of a radical export overhaul announced by top producer Indonesia earlier this week."""
+
+MESSAGE assistant """{"event_class": "Inflation_and_Pricing", "sector": "Commodity_Shock", "sub_type": "Commodity_Price_Volatility (Palm Oil, Import Costs)", "channel": "Indonesia Palm Oil Policy & Edible Oil Import Cost Volatility"}"""
+
+MESSAGE user """Please classify the following news article:
+
+Title: Chinese Mine Disaster Sparks Jump in Coal Prices and Stocks
+Description: Chinese coking coal futures jumped by the daily limit and mining stocks surged after a deadly accident in Shanxi province sparked fears of broader supply disruptions."""
+
+MESSAGE assistant """{"event_class": "Commodity_Shock", "sector": "Metals_and_Mining", "sub_type": "Commodity_Price_Volatility (Coking Coal, Supply Disruption)", "channel": "China Coal Supply Disruption & Steel / Commodity Price Risk"}"""
+
+MESSAGE user """Please classify the following news article:
+
+Title: Abercrombie shares jump 12% on earnings beat even as Iran conflict hits sales
+Description: Abercrombie & Fitch saw sales in Europe, Middle East and Africa decline by 10%, thanks in large part to the conflict in the Middle East."""
+
+MESSAGE assistant """{"event_class": "Consumer_Sentiment_and_Demand", "sector": "Consumer_Goods_and_FMCG", "sub_type": "Global_Retail_Sentiment (Geopolitical Risk, Consumer Discretionary)", "channel": "US Retail Sentiment & Geopolitical Consumer Impact"}"""
+
+MESSAGE user """Please classify the following news article:
+
+Title: Falling drone debris causes fire at oil terminal in Russia's Novorossiysk - Reuters
+Description: Falling drone debris causes fire at oil terminal in Russia's Novorossiysk Reuters"""
+
+MESSAGE assistant """{"event_class": "Geo_Political", "sector": "Oil_Gas_and_Refining", "sub_type": "Geopolitical_Risk_and_Supply_Disruption (Russia, Novorossiysk, Energy Security)", "channel": "Russia Oil Terminal Disruption & Global Supply Risk"}"""
+
+MESSAGE user """Please classify the following news article:
+
+Title: Jefferies Says Investors Boost ‘Nuclear Exposure’: ESG Investing
+Description: Almost two-thirds of fund managers permit some level of “nuclear exposure,” with 34% allowing investments in nuclear weaponry, according to Jefferies Financial Group Inc.’s fourth-annual ESG and defense survey."""
+
+MESSAGE assistant """{"event_class": "Domestic_Policy", "sector": "Banking_and_Finance", "sub_type": "Investment_Flows_and_Capital_Controls (ESG_Investment, Defense_Sector)", "channel": "Global Defense / Nuclear Investment Sentiment & Geopolitical Risk"}"""
