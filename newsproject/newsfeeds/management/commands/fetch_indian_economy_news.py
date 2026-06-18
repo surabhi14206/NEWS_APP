@@ -1053,43 +1053,21 @@ def search_and_fetch_full_text(title: str, default_text: str) -> tuple[str, str]
     import requests
     from bs4 import BeautifulSoup
     import urllib.parse
-    
-    print(f"  Performing web search for: \"{title}\"")
-    results = []
-    links = []
-    try:
-        ddgs = DDGS()
-        # Retrieve top 10-15 results
-        results = list(ddgs.text(title, max_results=15))
-        links = [r['href'] for r in results if 'href' in r]
-    except Exception as e:
-        print(f"  Web search failed: {e}")
-        
-    if not links:
-        print("  No search results found. Falling back to default text.")
-        return default_text, "RSS Feed"
+    import ollama
+    import json
+    import re
+    import numpy as np
 
-    print(f"  Found {len(links)} search results. Attempting to fetch content sequentially for top 5...")
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-    }
-    
-    # Try scraping the top 5 links
-    limit_scrape = min(len(links), 5)
-    for i in range(limit_scrape):
-        url = links[i]
-        print(f"  [{i+1}/{limit_scrape}] Fetching: {url}")
+    # Inline helper to fetch url content
+    def fetch_url_content(url: str, headers: dict) -> str:
         try:
-            # Try trafilatura first
             downloaded = trafilatura.fetch_url(url)
             if downloaded:
                 extracted = trafilatura.extract(downloaded)
-                # Ensure the text is long enough to be a real article body
                 if extracted and len(extracted.strip()) > 300:
-                    print(f"    -> SUCCESS: Scraped {len(extracted)} chars from result #{i+1}.")
-                    return extracted.strip(), url
+                    return extracted.strip()
             
-            # Fallback to requests + BeautifulSoup if trafilatura fails
+            # Fallback to requests + BeautifulSoup
             response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
                 soup = BeautifulSoup(response.content, 'html.parser')
@@ -1097,15 +1075,178 @@ def search_and_fetch_full_text(title: str, default_text: str) -> tuple[str, str]
                     s.decompose()
                 text = soup.get_text(separator=' ', strip=True)
                 if len(text) > 300:
-                    print(f"    -> SUCCESS: Scraped {len(text)} chars from result #{i+1} via BeautifulSoup.")
-                    return text, url
+                    return text
         except Exception as e:
-            print(f"    -> FAILED: {e}")
-            
-    # If top 5 scraping fails, use the descriptions from top 8-10 results (indices 7, 8, 9)
-    print("  Unable to scrape full text from top 5. Constructing context from search snippets (results 8-10)...")
+            print(f"      Scrape error: {e}")
+        return ""
+
+    # Inline helper to get normalized embeddings using nomic-embed-text
+    def get_nomic_embedding(text: str) -> np.ndarray:
+        response = ollama.embeddings(model="nomic-embed-text", prompt=text)
+        vec = np.array(response["embedding"], dtype=np.float32)
+        norm = np.linalg.norm(vec)
+        if norm > 1e-8:
+            vec = vec / norm
+        return vec
+
+    # Inline helper for Jaccard similarity
+    def get_jaccard_similarity(text1: str, text2: str) -> float:
+        def get_words(text: str):
+            t = text.lower().replace('-', ' ')
+            t = re.sub(r'[^\w\s]', '', t)
+            return set(t.split())
+        w1 = get_words(text1)
+        w2 = get_words(text2)
+        if not w1 or not w2:
+            return 0.0
+        return len(w1.intersection(w2)) / len(w1.union(w2))
+
+    # Inline helper for LLM judge checking same story
+    def check_same_story_ollama(rss_title: str, rss_desc: str, cand_title: str, cand_snippet: str, model_name: str) -> dict:
+        prompt = f"""You are a precise news deduplication expert for an Indian macroeconomic intelligence system.
+
+ORIGINAL RSS ITEM:
+Title: {rss_title}
+Description: {rss_desc}
+
+CANDIDATE WEB RESULT:
+Title: {cand_title}
+Snippet/Description: {cand_snippet}
+
+Task:
+Determine if the CANDIDATE reports on the exact same news event/story as the ORIGINAL (considering paraphrasing, same facts, same time/context, same key entities).
+
+Output ONLY valid JSON (no extra text):
+{{
+  "is_same_story": true or false,
+  "similarity_score": 0-100,
+  "confidence": "high" | "medium" | "low",
+  "reason": "1-2 sentence explanation",
+  "key_matching_facts": ["fact1", "fact2"],
+  "key_differences": ["diff1", "diff2"]
+}}
+"""
+        response = ollama.chat(
+            model=model_name,
+            messages=[{'role': 'user', 'content': prompt}],
+            options={'temperature': 0.0},
+            format='json'
+        )
+        content = response['message']['content'].strip()
+        json_match = re.search(r'\{.*?\}', content, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group())
+        return {"is_same_story": False, "similarity_score": 0}
+
+    print(f"  Performing web search for: \"{title}\"")
+    results = []
+    try:
+        ddgs = DDGS()
+        # Retrieve top 10-15 results
+        results = list(ddgs.text(title, max_results=15))
+    except Exception as e:
+        print(f"  Web search failed: {e}")
+        
+    if not results:
+        print("  No search results found. Falling back to default text.")
+        return default_text, "RSS Feed"
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    }
+
+    rss_text = f"{title} {default_text}".strip()
+    scored_results = []
+    embedding_failed = False
+
+    # 1. Primary Method (Semantic Cosine Similarity comparing title+description of RSS with title+snippet of candidate)
+    try:
+        query_emb = get_nomic_embedding(rss_text)
+        for r in results:
+            title_cand = r.get('title', '')
+            body_cand = r.get('body', '')
+            cand_text = f"{title_cand} {body_cand}".strip()
+            try:
+                cand_emb = get_nomic_embedding(cand_text)
+                score = float(np.dot(query_emb, cand_emb))
+                scored_results.append((score, r))
+            except Exception:
+                embedding_failed = True
+                break
+    except Exception:
+        embedding_failed = True
+
+    # 2. Fallback 2 (Jaccard similarity when embeddings fail)
+    if embedding_failed:
+        print("    [Warning]: Failed to generate vector embeddings. Falling back to Jaccard word-similarity.")
+        scored_results = []
+        for r in results:
+            title_cand = r.get('title', '')
+            body_cand = r.get('body', '')
+            cand_text = f"{title_cand} {body_cand}".strip()
+            score = get_jaccard_similarity(rss_text, cand_text)
+            scored_results.append((score, r))
+
+    threshold = 0.25 if embedding_failed else 0.75
+    ranked_results = [item for item in scored_results if item[0] >= threshold]
+    ranked_results.sort(key=lambda x: x[0], reverse=True)
+
+    scraped_text = ""
+    scraped_url = ""
+
+    # Scrape the top ranked results (up to top 5) sequentially
+    limit_scrape = min(len(ranked_results), 5)
+    if limit_scrape > 0:
+        print(f"  Calculating semantic similarity scores for search results... Found {len(ranked_results)} matches >= {threshold}.")
+        for i in range(limit_scrape):
+            score, r = ranked_results[i]
+            print(f"    - Result #{i+1}: Score={score:.4f} | Link: {r.get('href', '')[:60]}... | Title: {r.get('title', '')[:50]}...")
+        
+        for i in range(limit_scrape):
+            score, r = ranked_results[i]
+            url = r.get('href', '')
+            print(f"  Attempting to fetch [{i+1}/{limit_scrape}] (Score: {score:.4f}): {url}")
+            text = fetch_url_content(url, headers)
+            if text:
+                print(f"    -> SUCCESS: Scraped {len(text)} chars from result #{i+1}.")
+                scraped_text = text
+                scraped_url = url
+                break
+
+    # 3. Fallback 1 (LLM Judge matching on top 5 search results if primary/Jaccard yields no content)
+    if not scraped_text:
+        print("  [Fallback 1]: Falling back to standard check using Ollama LLM Judge to check similarity for top 5...")
+        limit_fallback = min(len(results), 5)
+        # We need the global OLLAMA_MODEL
+        model_name = OLLAMA_MODEL if 'OLLAMA_MODEL' in globals() else 'gemma3:4b'
+        for i in range(limit_fallback):
+            r = results[i]
+            url = r.get('href', '')
+            title_cand = r.get('title', '')
+            body_cand = r.get('body', '')
+            print(f"  Checking candidate #{i+1} via Ollama LLM Judge: \"{title_cand[:50]}\"")
+            try:
+                judge_res = check_same_story_ollama(title, default_text, title_cand, body_cand, model_name)
+                is_same = judge_res.get("is_same_story", False)
+                sim_score = judge_res.get("similarity_score", 0)
+                print(f"    -> Judge decision: is_same_story={is_same}, similarity_score={sim_score}")
+                if is_same or sim_score >= 75:
+                    print(f"    -> MATCH CONFIRMED. Attempting to fetch content: {url}")
+                    text = fetch_url_content(url, headers)
+                    if text:
+                        print(f"      -> SUCCESS: Scraped {len(text)} chars from matched result #{i+1}.")
+                        scraped_text = text
+                        scraped_url = url
+                        break
+            except Exception as e:
+                print(f"    -> Judge failed: {e}")
+
+    if scraped_text:
+        return scraped_text, scraped_url
+
+    # 4. Fallback 3 (Constructing context from search snippets results 8-10)
+    print("  [Fallback 3]: Sequential scraping failed. Constructing context from search snippets (results 8-10)...")
     snippets = []
-    # Try to take indices 7, 8, 9
     target_results = results[7:10] if len(results) >= 8 else results
     for r in target_results:
         snippet_text = r.get('body', '').strip()
