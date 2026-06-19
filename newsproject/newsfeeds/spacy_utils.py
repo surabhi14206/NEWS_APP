@@ -270,16 +270,17 @@ def extract_locations_hybrid(title: str, description: str = "", full_text: str =
             else:
                 origin_parts.append(country)
     elif unique_cities:
-        # Fallback to matched cities
+        # Fallback to matched cities (only if they map to a known country)
         for city in unique_cities[:2]:
-            country = CITY_COUNTRY_MAP.get(city.lower(), "Other")
-            origin_parts.append(f"{country} ({city})")
+            if city.lower() in CITY_COUNTRY_MAP:
+                country = CITY_COUNTRY_MAP[city.lower()]
+                origin_parts.append(f"{country} ({city})")
     
-    origin_str = " / ".join(origin_parts) if origin_parts else "Global"
+    origin_str = " / ".join(origin_parts) if origin_parts else "NA"
 
     # Check if spaCy succeeded in finding specific target countries/cities
     # If not, try Ollama as a high-fidelity fallback
-    if not origin_parts or origin_str == "Global":
+    if not origin_parts or origin_str == "NA":
         # Fast port-check to verify if Ollama is online before making calls
         ollama_active = False
         import requests
@@ -305,18 +306,18 @@ Instructions:
 1. Identify which of these four countries (India, US, Iran, China) is a primary subject.
 2. If a specific city, state, or region in that country is explicitly mentioned by name in the text, extract it in parentheses (e.g., 'India (Mumbai)', 'US (Washington)'). If no specific city is written by name in the text, just output the country (e.g. 'India').
 3. If none of these target countries is a primary subject, identify the general country and city explicitly mentioned in the text (e.g., 'UK (London)', 'Japan (Tokyo)').
-4. If no specific country or city is written explicitly in the text, return 'Global'.
+4. If no specific country or city is written explicitly in the text, return 'NA'.
 
 CRITICAL ANTI-HALLUCINATION DIRECTIVE:
 - Do NOT guess, assume, or intelligently deduce any city, state, or region. You must ONLY output a city/region name if that specific name is explicitly written in the provided text.
 - If the text only indicates a country (e.g., "rupee" indicates India, but no city is mentioned), you must output ONLY the country name (e.g., "India"), and NEVER add a parenthesized city (e.g., do NOT output "India (Mumbai)" or "India (Delhi)" unless "Mumbai" or "Delhi" is literally present in the text).
 
 5. Return ONLY a valid JSON object in this exact format with NO markdown code blocks:
-{{
+{
   "cities": ["City Name"],
   "countries": ["Country Name"],
-  "origin": "Country (City)"
-}}
+  "origin": "Country (City) or NA"
+}
 """
             try:
                 response = ollama.chat(
@@ -331,9 +332,9 @@ CRITICAL ANTI-HALLUCINATION DIRECTIVE:
                     
                     ollama_cities = ollama_result.get("cities", [])
                     ollama_countries = ollama_result.get("countries", [])
-                    ollama_origin = ollama_result.get("origin", "Global")
+                    ollama_origin = ollama_result.get("origin", "NA")
                     
-                    if ollama_origin and ollama_origin != "Global" and is_valid_location(ollama_origin):
+                    if ollama_origin and ollama_origin != "NA" and is_valid_location(ollama_origin):
                         return {
                             "cities": list(dict.fromkeys(spacy_cities + ollama_cities)),
                             "counties": spacy_counties,

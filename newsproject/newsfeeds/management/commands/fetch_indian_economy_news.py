@@ -716,6 +716,7 @@ Determine if this new article is a semantic duplicate (i.e., reports the exact s
 Return ONLY a valid JSON object in this exact format:
 {{
   "repeated": true or false,
+  "matched_title": "Exact Title of the matched article from the list above, or null if unique",
   "reason": "Detailed explanation of why it is repeated or unique"
 }}
 """
@@ -1026,15 +1027,15 @@ Article Details:
 Instructions:
 1. Identify which of the key countries (India, US, Iran, China) are primary subjects or heavily involved in this news.
 2. For each identified country, if a specific city, state, or region in that country is mentioned as the main location of the event, include it in parentheses (e.g., 'India (Mumbai)', 'US (Washington)', 'China (Beijing)'). If no specific city is mentioned, just output the country name (e.g., 'India').
-3. If none of these four countries (India, US, Iran, China) is a primary subject, return 'Global' or 'Other'.
-4. Format the final output as a clean, concise slash-separated list of identified origins (e.g., 'India (New Delhi)', 'US (Washington) / China (Beijing)', 'Iran', 'Global').
+3. If none of these four countries (India, US, Iran, China) is a primary subject, return 'NA'.
+4. Format the final output as a clean, concise slash-separated list of identified origins (e.g., 'India (New Delhi)', 'US (Washington) / China (Beijing)', 'Iran', 'NA').
 5. Return ONLY the final formatted string, with absolutely NO introduction, NO formatting markdown (like backticks or 'Output:'), and NO other explanation.
 
 Examples:
 - India (New Delhi)
 - US (Washington) / China (Beijing)
 - Iran
-- Global
+- NA
 """
     try:
         response = ollama.chat(
@@ -1044,10 +1045,10 @@ Examples:
         origin_result = response['message']['content'].strip()
         origin_result = origin_result.replace("`", "").replace('"', "").replace("'", "").strip()
         origin_result = origin_result.split('\n')[0].strip()
-        return origin_result or "Global"
+        return origin_result or "NA"
     except Exception:
-        return "Global"
-def search_and_fetch_full_text(title: str, default_text: str) -> tuple[str, str]:
+        return "NA"
+def search_and_fetch_full_text(title: str, default_text: str, rss_link: str = None) -> tuple[str, str]:
     from ddgs import DDGS
     import trafilatura
     import requests
@@ -1058,27 +1059,72 @@ def search_and_fetch_full_text(title: str, default_text: str) -> tuple[str, str]
     import re
     import numpy as np
 
-    # Inline helper to fetch url content
+    # Inline helper to fetch url content with error retries and exponential backoff
     def fetch_url_content(url: str, headers: dict) -> str:
+        import random
+        import time
+        sleep_time = random.uniform(8, 15)
+        print(f"      [Politeness Gap] Waiting {sleep_time:.2f} seconds before scraping...")
+        time.sleep(sleep_time)
+        
+        # Primary attempt with trafilatura
         try:
             downloaded = trafilatura.fetch_url(url)
             if downloaded:
                 extracted = trafilatura.extract(downloaded)
                 if extracted and len(extracted.strip()) > 300:
                     return extracted.strip()
-            
-            # Fallback to requests + BeautifulSoup
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.content, 'html.parser')
-                for s in soup(['script', 'style', 'nav', 'footer', 'header']):
-                    s.decompose()
-                text = soup.get_text(separator=' ', strip=True)
-                if len(text) > 300:
-                    return text
         except Exception as e:
-            print(f"      Scrape error: {e}")
+            print(f"      Trafilatura fetch failed: {e}")
+            
+        # Fallback to requests + BeautifulSoup with retry logic
+        max_retries = 2
+        error_status_codes = {400, 401, 403, 429, 502, 504}
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    for s in soup(['script', 'style', 'nav', 'footer', 'header']):
+                        s.decompose()
+                    text = soup.get_text(separator=' ', strip=True)
+                    if len(text) > 300:
+                        return text
+                    return ""
+                
+                if response.status_code in error_status_codes:
+                    if attempt < max_retries:
+                        wait_time = random.randint(300, 420)
+                        print(f"      Rate limited or scraping error ({response.status_code}). Waiting {wait_time} seconds (5-7 mins) before retrying once more...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"      Scrape request failed on final attempt with status code: {response.status_code}")
+                        break
+                else:
+                    print(f"      Scrape request failed with status code: {response.status_code}")
+                    break
+            except Exception as e:
+                print(f"      Scrape request attempt {attempt} failed with exception: {e}")
+                if attempt < max_retries:
+                    wait_time = random.randint(300, 420)
+                    print(f"      Waiting {wait_time} seconds (5-7 mins) before retrying once more...")
+                    time.sleep(wait_time)
+                else:
+                    break
         return ""
+
+    # Inline helper to normalize URLs for robust matching
+    def normalize_url(url: str) -> str:
+        if not url:
+            return ""
+        u = url.lower().strip()
+        u = re.sub(r'^https?://', '', u)
+        u = re.sub(r'^www\.', '', u)
+        u = u.split('?')[0]
+        u = u.rstrip('/')
+        return u
 
     # Inline helper to get normalized embeddings using nomic-embed-text
     def get_nomic_embedding(text: str) -> np.ndarray:
@@ -1138,6 +1184,24 @@ Output ONLY valid JSON (no extra text):
             return json.loads(json_match.group())
         return {"is_same_story": False, "similarity_score": 0}
 
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    }
+
+    rss_is_bloomberg = False
+    if rss_link and "bloomberg" in rss_link.lower():
+        rss_is_bloomberg = True
+
+    # Try scraping the RSS link first if it's not Bloomberg
+    if rss_link and not rss_is_bloomberg:
+        print(f"  Attempting to fetch RSS link (Top Priority): {rss_link}")
+        text = fetch_url_content(rss_link, headers)
+        if text:
+            print(f"    -> SUCCESS: Scraped {len(text)} chars from RSS link.")
+            return text, rss_link
+        else:
+            print(f"    -> FAILED to scrape RSS link. Falling back to web search...")
+
     print(f"  Performing web search for: \"{title}\"")
     results = []
     try:
@@ -1150,10 +1214,6 @@ Output ONLY valid JSON (no extra text):
     if not results:
         print("  No search results found. Falling back to default text.")
         return default_text, "RSS Feed"
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-    }
 
     rss_text = f"{title} {default_text}".strip()
     scored_results = []
@@ -1189,6 +1249,16 @@ Output ONLY valid JSON (no extra text):
 
     threshold = 0.25 if embedding_failed else 0.75
     ranked_results = [item for item in scored_results if item[0] >= threshold]
+
+    # Exclude results that match the RSS link (if provided and prioritized in the RSS step)
+    if rss_link and not rss_is_bloomberg:
+        norm_rss = normalize_url(rss_link)
+        before_count = len(ranked_results)
+        ranked_results = [item for item in ranked_results if normalize_url(item[1].get('href', '')) != norm_rss]
+        after_count = len(ranked_results)
+        if after_count < before_count:
+            print(f"  Excluded {before_count - after_count} search results matching the RSS link to prevent duplicate scraping.")
+
     ranked_results.sort(key=lambda x: x[0], reverse=True)
 
     scraped_text = ""
@@ -1197,15 +1267,17 @@ Output ONLY valid JSON (no extra text):
     # Scrape the top ranked results (up to top 5) sequentially
     limit_scrape = min(len(ranked_results), 5)
     if limit_scrape > 0:
-        print(f"  Calculating semantic similarity scores for search results... Found {len(ranked_results)} matches >= {threshold}.")
+        print(f"  Calculating semantic similarity scores for search results... Found {len(ranked_results)} matches >= {threshold * 100:.1f}%.")
         for i in range(limit_scrape):
             score, r = ranked_results[i]
-            print(f"    - Result #{i+1}: Score={score:.4f} | Link: {r.get('href', '')[:60]}... | Title: {r.get('title', '')[:50]}...")
+            percentage = score * 100
+            print(f"    - Result #{i+1}: Score={percentage:.2f}% | Link: {r.get('href', '')[:60]}... | Title: {r.get('title', '')[:50]}...")
         
         for i in range(limit_scrape):
             score, r = ranked_results[i]
+            percentage = score * 100
             url = r.get('href', '')
-            print(f"  Attempting to fetch [{i+1}/{limit_scrape}] (Score: {score:.4f}): {url}")
+            print(f"  Attempting to fetch [{i+1}/{limit_scrape}] (Score: {percentage:.2f}%): {url}")
             text = fetch_url_content(url, headers)
             if text:
                 print(f"    -> SUCCESS: Scraped {len(text)} chars from result #{i+1}.")
@@ -1216,11 +1288,16 @@ Output ONLY valid JSON (no extra text):
     # 3. Fallback 1 (LLM Judge matching on top 5 search results if primary/Jaccard yields no content)
     if not scraped_text:
         print("  [Fallback 1]: Falling back to standard check using Ollama LLM Judge to check similarity for top 5...")
-        limit_fallback = min(len(results), 5)
+        filtered_fallback_results = results
+        if rss_link and not rss_is_bloomberg:
+            norm_rss = normalize_url(rss_link)
+            filtered_fallback_results = [r for r in results if normalize_url(r.get('href', '')) != norm_rss]
+        
+        limit_fallback = min(len(filtered_fallback_results), 5)
         # We need the global OLLAMA_MODEL
         model_name = OLLAMA_MODEL if 'OLLAMA_MODEL' in globals() else 'gemma3:4b'
         for i in range(limit_fallback):
-            r = results[i]
+            r = filtered_fallback_results[i]
             url = r.get('href', '')
             title_cand = r.get('title', '')
             body_cand = r.get('body', '')
@@ -1468,41 +1545,67 @@ class Command(BaseCommand):
                     "steps": [],
                     "analysis": {}
                 }
+                art["entry_log"] = entry_log
                 
                 duplicate_found = False
                 duplicate_reason = ""
+                existing_dup_to_replace = None
                 
                 for existing in word_selected_articles:
-                    if art["title"].lower() == existing["title"].lower():
-                        duplicate_found = True
-                        duplicate_reason = f"Exact match with article: '{existing['title']}'"
-                        break
-                    
+                    is_exact = art["title"].lower() == existing["title"].lower()
                     sim = get_jaccard_similarity(art["title"], existing["title"])
-                    if sim >= 0.8:
+                    if is_exact or sim >= 0.8:
                         duplicate_found = True
-                        duplicate_reason = f"Highly similar headline (Jaccard sim: {sim:.2f}) to: '{existing['title']}'"
+                        if is_exact:
+                            duplicate_reason = f"Exact match with article: '{existing['title']}'"
+                        else:
+                            duplicate_reason = f"Highly similar headline (Jaccard sim: {sim:.2f}) to: '{existing['title']}'"
+                        
+                        # Bloomberg low priority rule
+                        art_is_bb = "bloomberg" in art["source"].lower()
+                        existing_is_bb = "bloomberg" in existing["source"].lower()
+                        if existing_is_bb and not art_is_bb:
+                            existing_dup_to_replace = existing
                         break
                         
                 if duplicate_found:
-                    entry_log["status"] = "skipped_duplicate_headline"
-                    entry_log["skip_reason"] = duplicate_reason
-                    entry_log["steps"].append({
-                        "step": "Word-to-word Cleaning",
-                        "status": "REJECTED",
-                        "detail": duplicate_reason
-                    })
-                    rejected_articles.append(entry_log)
-                    all_articles_log.append(entry_log)
+                    if existing_dup_to_replace:
+                        old_log = existing_dup_to_replace["entry_log"]
+                        old_log["status"] = "skipped_duplicate_headline"
+                        old_log["skip_reason"] = f"Replaced by non-Bloomberg duplicate: '{art['title']}'"
+                        old_log["steps"].append({
+                            "step": "Word-to-word Cleaning (Bloomberg Priority Rule)",
+                            "status": "REJECTED",
+                            "detail": f"Bloomberg article rejected in favor of duplicate from {art['source']}."
+                        })
+                        rejected_articles.append(old_log)
+                        all_articles_log.append(old_log)
+                        
+                        word_selected_articles.remove(existing_dup_to_replace)
+                        
+                        entry_log["steps"].append({
+                            "step": "Word-to-word Cleaning (Bloomberg Priority Rule)",
+                            "status": "PASSED",
+                            "detail": f"Replaced duplicate Bloomberg article: '{existing_dup_to_replace['title']}'."
+                        })
+                        word_selected_articles.append(art)
+                    else:
+                        entry_log["status"] = "skipped_duplicate_headline"
+                        entry_log["skip_reason"] = duplicate_reason
+                        entry_log["steps"].append({
+                            "step": "Word-to-word Cleaning",
+                            "status": "REJECTED",
+                            "detail": duplicate_reason
+                        })
+                        rejected_articles.append(entry_log)
+                        all_articles_log.append(entry_log)
                 else:
                     entry_log["steps"].append({
                         "step": "Word-to-word Cleaning",
                         "status": "PASSED",
                         "detail": "No similar headline found in selected articles."
                     })
-                    art_copy = dict(art)
-                    word_selected_articles.append(art_copy)
-                    art_copy["entry_log"] = entry_log
+                    word_selected_articles.append(art)
 
             self.stdout.write(f"Word-to-word cleaning complete. {len(word_selected_articles)} passed, {len(rejected_articles)} rejected.\n")
 
@@ -1595,17 +1698,67 @@ class Command(BaseCommand):
                 except Exception as e:
                     dup_result = {"repeated": False, "reason": f"Ollama error: {e}"}
                 
-                if dup_result.get("repeated", False):
-                    self.stdout.write(f"  -> REJECTED as semantic duplicate: {dup_result.get('reason', '')}")
-                    entry_log["status"] = "skipped_semantic_duplicate"
-                    entry_log["skip_reason"] = f"Semantic duplicate check: {dup_result.get('reason', '')}"
-                    entry_log["steps"].append({
-                        "step": "Semantic Deduplication",
-                        "status": "REJECTED",
-                        "detail": dup_result.get("reason", "")
-                    })
-                    rejected_articles.append(entry_log)
-                    all_articles_log.append(entry_log)
+                repeated = dup_result.get("repeated", False)
+                matched_title = dup_result.get("matched_title")
+                
+                existing_dup_to_replace = None
+                if repeated and matched_title:
+                    import re
+                    def clean_t(t):
+                        return re.sub(r'\W+', '', t.lower().strip())
+                    norm_matched = clean_t(matched_title)
+                    for existing in semantic_selected_articles:
+                        if clean_t(existing["title"]) == norm_matched:
+                            existing_dup_to_replace = existing
+                            break
+                    
+                    if not existing_dup_to_replace:
+                        best_sim = 0
+                        for existing in semantic_selected_articles:
+                            sim = get_jaccard_similarity(matched_title, existing["title"])
+                            if sim > best_sim and sim >= 0.5:
+                                best_sim = sim
+                                existing_dup_to_replace = existing
+                
+                if repeated:
+                    art_is_bb = "bloomberg" in art["source"].lower()
+                    existing_is_bb = False
+                    if existing_dup_to_replace:
+                        existing_is_bb = "bloomberg" in existing_dup_to_replace["source"].lower()
+                        
+                    if existing_dup_to_replace and existing_is_bb and not art_is_bb:
+                        self.stdout.write(f"  -> SWAP: Rejecting existing Bloomberg article '{existing_dup_to_replace['title']}' in favor of non-Bloomberg duplicate '{art['title']}'")
+                        
+                        old_log = existing_dup_to_replace["entry_log"]
+                        old_log["status"] = "skipped_semantic_duplicate"
+                        old_log["skip_reason"] = f"Replaced by non-Bloomberg semantic duplicate: '{art['title']}'"
+                        old_log["steps"].append({
+                            "step": "Semantic Deduplication (Bloomberg Priority Rule)",
+                            "status": "REJECTED",
+                            "detail": f"Bloomberg article rejected in favor of semantic duplicate from {art['source']}."
+                        })
+                        rejected_articles.append(old_log)
+                        all_articles_log.append(old_log)
+                        
+                        semantic_selected_articles.remove(existing_dup_to_replace)
+                        
+                        entry_log["steps"].append({
+                            "step": "Semantic Deduplication (Bloomberg Priority Rule)",
+                            "status": "PASSED",
+                            "detail": f"Replaced duplicate Bloomberg article: '{existing_dup_to_replace['title']}'."
+                        })
+                        semantic_selected_articles.append(art)
+                    else:
+                        self.stdout.write(f"  -> REJECTED as semantic duplicate: {dup_result.get('reason', '')}")
+                        entry_log["status"] = "skipped_semantic_duplicate"
+                        entry_log["skip_reason"] = f"Semantic duplicate check: {dup_result.get('reason', '')}"
+                        entry_log["steps"].append({
+                            "step": "Semantic Deduplication",
+                            "status": "REJECTED",
+                            "detail": dup_result.get("reason", "")
+                        })
+                        rejected_articles.append(entry_log)
+                        all_articles_log.append(entry_log)
                 else:
                     entry_log["steps"].append({
                         "step": "Semantic Deduplication",
@@ -1794,7 +1947,7 @@ class Command(BaseCommand):
                 
                 # Try fetching full text via web search
                 default_text = art.get("description", "") or art.get("title", "")
-                full_text, source_info = search_and_fetch_full_text(art["title"], default_text)
+                full_text, source_info = search_and_fetch_full_text(art["title"], default_text, rss_link=art.get("link"))
                 entry_log["scraped_content"] = full_text
                 
                 if source_info != "RSS Feed":
@@ -1916,7 +2069,7 @@ class Command(BaseCommand):
                         full_text=entry_log["scraped_content"] or entry_log["summary_generated"],
                         model_name=OLLAMA_MODEL
                     )
-                    origin = res_origin.get("origin", "Global")
+                    origin = res_origin.get("origin", "NA")
                     
                     # Store detailed insights in entry_log
                     entry_log["analysis"]["origin_details"] = {
@@ -1929,7 +2082,7 @@ class Command(BaseCommand):
                     }
                 except Exception as exc_origin:
                     self.stdout.write(f"  Origin identification failed: {exc_origin}, using default")
-                    origin = "Global"
+                    origin = "NA"
 
                 entry_log["analysis"]["origin"] = origin
                 entry_log["insights"]["origin"] = origin

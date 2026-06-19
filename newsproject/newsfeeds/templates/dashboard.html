@@ -19,6 +19,11 @@
             --section-title-bg: #dce4f0;
         }
 
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+        }
+
         body { 
             font-family: 'Inter', sans-serif; 
             margin: 0; 
@@ -26,7 +31,7 @@
             color: var(--text-main);
             display: flex;
             height: 100vh;
-            overflow: hidden;
+            overflow-y: hidden;
         }
 
         /* Layout */
@@ -43,6 +48,7 @@
             flex: 1;
             padding: 30px 40px;
             overflow-y: auto;
+            overflow-x: hidden;
             background: var(--bg-body);
         }
 
@@ -187,6 +193,7 @@
             border: 1px solid var(--border-color);
             overflow: hidden;
             display: none; /* Hidden until an article is clicked */
+            transition: margin 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
         .template-title {
@@ -989,106 +996,116 @@
             <p>Click on any news article from the left sidebar to view its Event Record Template.</p>
         </div>
 
-        <!-- Dashboard Template (Shows when article clicked) -->
-        <div id="template-view" class="template-wrapper" style="position: relative; overflow: visible;">
+        <!-- Container for Card + Timeline -->
+        <div id="template-container" style="display: none; justify-content: center; align-items: start; gap: 20px; width: 100%; max-width: 1420px; margin: 0 auto; overflow: visible;">
             
-            <div class="template-title" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 25px; border-bottom: 1px solid var(--border-color); background: white; gap: 20px;">
-                <div id="display-title" style="font-size: 1.25rem; font-weight: 600; color: #111827; flex: 1;">[Headline]</div>
-                <button id="pipeline-steps-toggle-btn" onclick="togglePipelineTimeline()" title="View Scraper Pipeline Verification Steps" style="background: none; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--brand-color); transition: all 0.2s; outline: none;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="grid-form">
-                <!-- Row 1 -->
-                <div class="form-row">
-
-                    <div class="form-group">
-                        <div class="label">Date</div>
-                        <div class="value" id="val-date">-</div>
-                    </div>
-                    <div class="form-group">
-                        <div class="label">Source</div>
-                        <div class="value" id="val-source">-</div>
-                    </div>
+            <!-- Dashboard Template (Shows when article clicked) -->
+            <div id="template-view" class="template-wrapper" style="position: relative; overflow: visible; flex: 1; max-width: 900px; margin: 0; display: block;">
+                
+                <div class="template-title" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 25px; border-bottom: 1px solid var(--border-color); background: white; gap: 20px;">
+                    <div id="display-title" style="font-size: 1.25rem; font-weight: 600; color: #111827; flex: 1;">[Headline]</div>
+                    <button id="pipeline-steps-toggle-btn" onclick="togglePipelineTimeline()" title="View Scraper Pipeline Verification Steps" style="background: none; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--brand-color); transition: all 0.2s; outline: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                    </button>
                 </div>
+                
+                <div class="grid-form">
+                    <!-- Row 1 -->
+                    <div class="form-row">
 
-                <!-- Row 2 -->
-                <div class="form-row">
-                    <div class="form-group full">
-                        <div class="label">Headline</div>
-                        <div class="value"><a href="#" id="val-headline" target="_blank">-</a></div>
+                        <div class="form-group">
+                            <div class="label">Date</div>
+                            <div class="value" id="val-date">-</div>
+                        </div>
+                        <div class="form-group">
+                            <div class="label">Source</div>
+                            <div class="value" id="val-source">-</div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Row 3 -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <div class="label">Event class</div>
-                        <div class="value" id="val-event-class">Economic Impact</div>
+                    <!-- Row 2 -->
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <div class="label">Headline</div>
+                            <div class="value"><a href="#" id="val-headline" target="_blank">-</a></div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <div class="label">Sub-type</div>
-                        <div class="value" id="val-sub-type">General News</div>
-                    </div>
-                </div>
 
-                <!-- Row 4 -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <div class="label">City/Country</div>
-                        <div class="value" id="val-origin">India / Global</div>
+                    <!-- Row 3 -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <div class="label">Event class</div>
+                            <div class="value" id="val-event-class">Economic Impact</div>
+                        </div>
+                        <div class="form-group">
+                            <div class="label">Sub-type</div>
+                            <div class="value" id="val-sub-type">General News</div>
+                        </div>
                     </div>
-                    <div class="form-group" style="overflow: visible;">
-                        <div class="label">Direction</div>
-                        <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; border-top-right-radius: 5px; border-bottom-right-radius: 5px; overflow: visible;">
-                            <div id="val-direction-badge">
-                                <span class="badge-neutral">Pending</span>
+
+                    <!-- Row 4 -->
+                    <div class="form-row">
+                        <div class="form-group" style="overflow: visible;">
+                            <div class="label">City/Country</div>
+                            <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; overflow: visible;">
+                                <span id="val-origin">India / Global</span>
+                                <div class="info-icon-container" id="val-origin-info" style="display: none;">
+                                    <span style="display: inline-block; width: 10px; height: 10px; background-color: #3b82f6; border-radius: 50%;"></span>
+                                    <div class="tooltip-text" style="right: 0; width: auto; white-space: nowrap; padding: 6px 10px; font-size: 0.75rem;">no country found</div>
+                                </div>
                             </div>
-                            
-                            <!-- Hover Info Icon for Sentiment Reason -->
-                            <div class="info-icon-container" id="val-direction-info" style="display: none;">
-                                <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                                </svg>
-                                <div class="tooltip-text" id="val-direction-tooltip">No details available.</div>
+                        </div>
+                        <div class="form-group" style="overflow: visible;">
+                            <div class="label">Direction</div>
+                            <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; border-top-right-radius: 5px; border-bottom-right-radius: 5px; overflow: visible;">
+                                <div id="val-direction-badge">
+                                    <span class="badge-neutral">Pending</span>
+                                </div>
+                                
+                                <!-- Hover Info Icon for Sentiment Reason -->
+                                <div class="info-icon-container" id="val-direction-info" style="display: none;">
+                                    <svg class="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; display: block;">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    <div class="tooltip-text" id="val-direction-tooltip">No details available.</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Row 5 -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <div class="label">Sector</div>
-                        <div class="value" id="val-sector">Macroeconomy</div>
-                    </div>
-                    <div class="form-group">
-                        <div class="label">Channel</div>
-                        <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                            <span id="val-channel">News & Media</span>
-                            <span id="val-channel-badge" class="channel-source-badge" style="display: none;">c</span>
+                    <!-- Row 5 -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <div class="label">Sector</div>
+                            <div class="value" id="val-sector">Macroeconomy</div>
+                        </div>
+                        <div class="form-group">
+                            <div class="label">Channel</div>
+                            <div class="value" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                <span id="val-channel">News & Media</span>
+                                <span id="val-channel-badge" class="channel-source-badge" style="display: none;">c</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Row 6 -->
-                <div class="form-row">
-                    <div class="form-group full">
-                        <div class="label tall">Insight</div>
-                        <div class="value" id="val-context">-</div>
+                    <!-- Row 6 -->
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <div class="label tall">Insight</div>
+                            <div class="value" id="val-context">-</div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Pipeline verification popover is handled in the template title header corner -->
+                    <!-- Pipeline verification popover is handled in the template title header corner -->
+                </div>
             </div>
 
-            <!-- Collapsible steps timeline panel on the right of the card -->
-            <div id="pipeline-steps-timeline" style="display: none; position: absolute; left: calc(100% + 20px); top: 0; width: 450px; max-height: calc(100vh - 100px); overflow-y: auto; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 20px; z-index: 1000;">
+            <!-- Collapsible steps timeline panel -->
+            <div id="pipeline-steps-timeline" style="display: none; width: 400px; max-height: calc(100vh - 100px); overflow-y: auto; background: white; border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 20px; box-sizing: border-box; flex-shrink: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
                     <h4 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #374151;">Scraper Pipeline Verification</h4>
                     <button onclick="togglePipelineTimeline()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #9ca3af; line-height: 1; padding: 0;">&times;</button>
@@ -1101,6 +1118,7 @@
                     <div style="position: absolute; left: 9px; top: 5px; bottom: 5px; width: 2px; background: #e5e7eb; z-index: 1;"></div>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -1166,6 +1184,10 @@
 
             // Hide empty state, show template
             document.getElementById('empty-state').style.display = 'none';
+            const templateContainer = document.getElementById('template-container');
+            if (templateContainer) {
+                templateContainer.style.display = 'flex';
+            }
             document.getElementById('template-view').style.display = 'block';
 
             // Get data from data attributes
@@ -1187,7 +1209,12 @@
 
             // Update UI elements
             document.getElementById('display-title').textContent = title;
-            document.getElementById('val-origin').textContent = origin || "Global";
+            const displayOrigin = origin || "NA";
+            document.getElementById('val-origin').textContent = displayOrigin;
+            const originInfo = document.getElementById('val-origin-info');
+            if (originInfo) {
+                originInfo.style.display = (displayOrigin.trim().toUpperCase() === 'NA') ? 'inline-block' : 'none';
+            }
             document.getElementById('val-date').textContent = date;
             document.getElementById('val-source').textContent = source;
             document.getElementById('val-event-class').textContent = eventClass ? eventClass.replace(/^L1[_\s\-]+/i, '').replace(/_/g, ' ') : "Economic Impact";
@@ -1268,6 +1295,15 @@
                 btnEl.style.background = 'none';
                 btnEl.style.borderColor = 'var(--border-color)';
             }
+            const templateView = document.getElementById('template-view');
+            if (templateView) {
+                templateView.style.margin = '0';
+            }
+            
+            // Force viewport scroll reset to prevent layout cut-off issues
+            window.scrollTo(0, 0);
+            document.documentElement.scrollLeft = 0;
+            document.body.scrollLeft = 0;
             
             // Render pipeline verification steps
             renderPipelineStepsForArticle(title);
@@ -1303,7 +1339,12 @@
 
             // Update UI elements
             document.getElementById('saved-display-title').textContent = title;
-            document.getElementById('saved-val-origin').textContent = origin || "Global";
+            const displayOrigin = origin || "NA";
+            document.getElementById('saved-val-origin').textContent = displayOrigin;
+            const originInfo = document.getElementById('saved-val-origin-info');
+            if (originInfo) {
+                originInfo.style.display = (displayOrigin.trim().toUpperCase() === 'NA') ? 'inline-block' : 'none';
+            }
             document.getElementById('saved-val-date').textContent = date;
             document.getElementById('saved-val-source').textContent = source;
             document.getElementById('saved-val-event-class').textContent = eventClass ? eventClass.replace(/^L1[_\s\-]+/i, '').replace(/_/g, ' ') : "Economic Impact";
@@ -1682,9 +1723,15 @@
 
                         <!-- Row 4 -->
                         <div class="form-row" style="display: flex; gap: 12px;">
-                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden;">
+                            <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: visible;">
                                 <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">City/Country</div>
-                                <div class="value" id="saved-val-origin" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; line-height: 1.5;">-</div>
+                                <div class="value" style="background: var(--bg-value); padding: 10px 15px; font-size: 0.9rem; color: #1f2937; flex: 1; display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; overflow: visible;">
+                                    <span id="saved-val-origin">-</span>
+                                    <div class="info-icon-container" id="saved-val-origin-info" style="display: none;">
+                                        <span style="display: inline-block; width: 10px; height: 10px; background-color: #3b82f6; border-radius: 50%;"></span>
+                                        <div class="tooltip-text" style="right: 0; width: auto; white-space: nowrap; padding: 6px 10px; font-size: 0.75rem;">no country found</div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="form-group" style="display: flex; flex: 1; border: 1px solid var(--border-color); border-radius: 6px; overflow: visible;">
                                 <div class="label" style="background: var(--bg-label); padding: 10px 15px; font-size: 0.85rem; font-weight: 600; color: #4b5563; width: 120px; flex-shrink: 0; display: flex; align-items: center; border-right: 1px solid var(--border-color);">Direction</div>
@@ -2605,15 +2652,28 @@
         function togglePipelineTimeline() {
             const timeline = document.getElementById('pipeline-steps-timeline');
             const btn = document.getElementById('pipeline-steps-toggle-btn');
+            const templateView = document.getElementById('template-view');
+            
+            // Force viewport scroll reset to prevent layout cut-off issues
+            window.scrollTo(0, 0);
+            document.documentElement.scrollLeft = 0;
+            document.body.scrollLeft = 0;
+            
             if (timeline) {
                 if (timeline.style.display === 'none' || timeline.style.display === '') {
                     timeline.style.display = 'block';
+                    if (templateView) {
+                        templateView.style.margin = '0'; // Margin 0, centered flexbox layout handles alignment
+                    }
                     if (btn) {
                         btn.style.background = '#eef5ff';
                         btn.style.borderColor = '#3b82f6';
                     }
                 } else {
                     timeline.style.display = 'none';
+                    if (templateView) {
+                        templateView.style.margin = '0'; // Keep centered
+                    }
                     if (btn) {
                         btn.style.background = 'none';
                         btn.style.borderColor = 'var(--border-color)';
