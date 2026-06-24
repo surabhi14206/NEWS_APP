@@ -1720,7 +1720,7 @@ class Command(BaseCommand):
                 entry_log["steps"].append({
                     "step": "Direction Analysis",
                     "status": "PASSED",
-                    "detail": f"Direction: {direction_result.get('direction')}, Score: {direction_result.get('impact_score')}"
+                    "detail": f"Direction: {direction_result.get('direction')}, Score: {direction_result.get('impact_score')}, Reason: {direction_result.get('reason', '')}"
                 })
                 
                 self.stdout.write(f"  Analyzing geographic origin...")

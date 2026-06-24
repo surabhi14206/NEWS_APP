@@ -1176,6 +1176,32 @@
             return html;
         }
 
+        function formatDirectionDetail(detail, log) {
+            if (!detail) return "";
+            let direction = "";
+            let score = "";
+            let reason = "";
+            
+            const dirMatch = detail.match(/Direction:\s*([^,]+)/i);
+            const scoreMatch = detail.match(/Score:\s*([^,]+)/i);
+            const reasonMatch = detail.match(/Reason:\s*([\s\S]+)$/i);
+            
+            if (dirMatch) direction = dirMatch[1].trim();
+            if (scoreMatch) score = scoreMatch[1].trim();
+            if (reasonMatch) reason = reasonMatch[1].trim();
+            
+            if (!direction && !score && !reason) {
+                return linkify(detail);
+            }
+            
+            let html = `<div style="display: flex; flex-direction: column; gap: 4px; margin-top: 5px;">`;
+            if (direction) html += `<div><strong>Direction:</strong> ${direction.charAt(0).toUpperCase() + direction.slice(1)}</div>`;
+            if (score) html += `<div><strong>Impact Score:</strong> ${score}</div>`;
+            if (reason) html += `<div style="border-top: 1px dashed #e5e7eb; padding-top: 4px; margin-top: 4px; font-style: italic; color: #374151;"><strong>Reason:</strong> ${linkify(reason)}</div>`;
+            html += `</div>`;
+            return html;
+        }
+
         function showArticleDetails(card) {
             // Remove active class from all cards
             document.querySelectorAll('.article-card').forEach(c => c.classList.remove('active'));
@@ -2525,6 +2551,8 @@
                 stepDetail.style.color = '#6b7280';
                 if (step.step === 'Taxonomy Classification') {
                     stepDetail.innerHTML = formatTaxonomyDetail(step.detail, log);
+                } else if (step.step === 'Direction Analysis') {
+                    stepDetail.innerHTML = formatDirectionDetail(step.detail, log);
                 } else {
                     stepDetail.innerHTML = linkify(step.detail);
                 }
@@ -2635,6 +2663,8 @@
                 stepDetail.style.color = '#6b7280';
                 if (step.step === 'Taxonomy Classification') {
                     stepDetail.innerHTML = formatTaxonomyDetail(step.detail, logEntry);
+                } else if (step.step === 'Direction Analysis') {
+                    stepDetail.innerHTML = formatDirectionDetail(step.detail, logEntry);
                 } else {
                     stepDetail.innerHTML = linkify(step.detail);
                 }
