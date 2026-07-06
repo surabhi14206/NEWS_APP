@@ -1,0 +1,19 @@
+# Core web application framework
+Django==4.2.7
+
+# Scraping & feed parsing
+feedparser==6.0.12
+requests==2.32.5
+beautifulsoup4==4.14.3
+trafilatura==2.0.0
+duckduckgo_search==8.1.1
+selenium==4.44.0
+
+# Natural Language Processing & AI
+spacy==3.8.13
+ollama==0.6.2
+geonamescache>=1.5.1
+
+# Utilities
+numpy==2.4.2
+python-dateutil==2.9.0.post0

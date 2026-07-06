@@ -997,10 +997,29 @@ def analyze_direction_from_india_view(title: str, description: str, summary: str
             if direction not in ['positive', 'negative', 'neutral']:
                 direction = 'neutral'
                 
+            reason = result.get('reason', 'No reason provided')
+            
+            # Post-processing correction for incorrect oil decline reasoning
+            t_desc_lower = (title + " " + description).lower()
+            reason_lower = reason.lower()
+            
+            is_oil_decline = any(w in t_desc_lower for w in ["oil", "crude", "energy", "lng", "petroleum"]) and \
+                             any(w in t_desc_lower for w in ["decline", "fall", "drop", "down", "ease", "discount", "lower", "slashed"])
+                             
+            if is_oil_decline:
+                wrong_phrases = ["increase india's import bill", "increase india’s import bill", "negatively impact india's import bill", "negatively impact india’s import bill"]
+                has_wrong_logic = any(wp in reason_lower for wp in wrong_phrases) or \
+                                  ("import bill" in reason_lower and ("increase" in reason_lower or "negative" in reason_lower or "widen" in reason_lower) and ("decline" in reason_lower or "fall" in reason_lower or "drop" in reason_lower or "down" in reason_lower or "ease" in reason_lower))
+                
+                if has_wrong_logic or (direction == "negative" and any(w in reason_lower for w in ["decline", "fall", "drop", "down", "ease", "lower"])):
+                    direction = "positive"
+                    result["impact_score"] = 3
+                    reason = "A decline in global oil prices will reduce India's import bill, putting upward (or less downward) pressure on the rupee and easing inflationary pressures."
+                
             return {
                 "direction": direction,
                 "impact_score": int(result.get('impact_score', 0)),
-                "reason": result.get('reason', 'No reason provided')
+                "reason": reason
             }
             
     except Exception as e:
